@@ -2,10 +2,7 @@ package ui;
 
 import geography.*;
 import geography.Properties;
-import new_metrics.Metrics;
 import solutions.*;
-import ui.MainFrame.OpenShapeFileThread;
-import util.*;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -29,13 +26,11 @@ import org.nocrala.tools.gis.data.esri.shapefile.header.*;
 import org.nocrala.tools.gis.data.esri.shapefile.shape.*;
 import org.nocrala.tools.gis.data.esri.shapefile.shape.shapes.*;
 
-import dbf.*;
-/*
 import com.hexiong.jdbf.DBFReader;
 import com.hexiong.jdbf.DBFWriter;
-import com.hexiong.jdbf.Exception;
-import com.hexiong.jdbf.DBField;
-*/
+import com.hexiong.jdbf.JDBFException;
+import com.hexiong.jdbf.JDBField;
+
 
 public class MainFrame extends JFrame implements iChangeListener, iDiscreteEventListener {
 	/*
@@ -48,11 +43,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public static MainFrame mainframe;
 	public DialogManageLocks manageLocks = new DialogManageLocks();
 	public PanelSeats seatsPanel = new PanelSeats();
-	public PanelFeatures featuresPanel = new PanelFeatures();
 	public JProgressBar progressBar = new JProgressBar();
 	public FrameSeatsVotesChart frameSeatsVotesChart = new FrameSeatsVotesChart();
-	public InstructionProcessor ip = new InstructionProcessor();
-	public FramePieCharts pie = new FramePieCharts();
 	
 	public ButtonGroup seatsModeBG = new ButtonGroup();
 	 
@@ -63,9 +55,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public FeatureCollection featureCollection = new FeatureCollection();
 	public Project project = new Project();
 	public DemographicSet activeDemographicSet = new DemographicSet();
-	public JRadioButton lblMembersPerDistrict;
-	
-	public ButtonGroup groupColoringMode = new ButtonGroup();
 
 	
 	//========PRIMITIVES
@@ -84,7 +73,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public boolean hushcomboBoxCounty = false;
 
 	double mutation_rate_multiplier = 0.1;
-	public static double boundary_mutation_rate_multiplier = 2.0;//0.2;
+	public static double boundary_mutation_rate_multiplier = 1.0;//0.2;
 	long load_wait = 100;
 	
 	double minx,maxx;
@@ -108,13 +97,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public PanelGraph panelGraph = new PanelGraph();
 
 	//===========COMPONENTS - MENU ITEMS
-	JRadioButtonMenuItem mntmColorDistDemo;
-	JRadioButtonMenuItem mntmColorPartisanPacking;
-	JRadioButtonMenuItem mntmColorRacialPacking;
-	JMenuItem mntmExportToHtml;
 	public ButtonGroup selectionType = new ButtonGroup();
-	JRadioButtonMenuItem mntmShowVoteBalance = new JRadioButtonMenuItem("Color by vote balance");;
-	JRadioButtonMenuItem mntmShowDemographics = new JRadioButtonMenuItem("Color by demographic");;
+	JMenuItem mntmShowVoteBalance = new JMenuItem("Color by vote balance");;
+	JMenuItem mntmShowDemographics = new JMenuItem("Color by demographic");;
 	JCheckBoxMenuItem chckbxmntmShowPrecinctLabels = new JCheckBoxMenuItem("Show precinct labels");
 	JCheckBoxMenuItem chckbxmntmHideMapLines = new JCheckBoxMenuItem("Show map lines");
 	JCheckBoxMenuItem chckbxmntmFlipVertical = new JCheckBoxMenuItem("Flip vertical");
@@ -132,7 +117,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	JMenuItem mntmOpenElectionResults = new JMenuItem("Open Election results");
 	JMenu mnEvolution = new JMenu("Evolution");
 	JMenu mnHelp = new JMenu("Help");
-	private JMenu mnHelp_1;
 	JMenuItem mntmWebsite = new JMenuItem("Website");
 	JMenuItem mntmSourceCode = new JMenuItem("Source code");
 	JMenuItem mntmLicense = new JMenuItem("License");
@@ -142,6 +126,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	JMenuItem mntmShowData = new JMenuItem("Show data");
 	
 	JMenu mnImportExport = new JMenu("Aggregate/Deaggregate");
+	private JMenu mnImportExport_1;
 
 	JMenuItem mntmExportPopulation = new JMenuItem("Export population");
 	JMenuItem mntmImportPopulation = new JMenuItem("Import population");
@@ -153,7 +138,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public JComboBox comboBoxPopulation = new JComboBox();
 	public JComboBox comboBoxDistrictColumn = new JComboBox();
     public JTextField textFieldNumDistricts = new JTextField();
-    public JTextField evolutionPopulationTF;
+    public JTextField textField = new JTextField();
 	public JTextField textFieldSeatsPerDistrict;
 
 	public JSlider slider_mutation;
@@ -168,6 +153,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public JButton stopButton = new JButton();
 	public JMenuItem mntmOpenProjectFile_1;
 	public JPanel panel_4;
+	public JButton btnElectionColumns;
+	public JMenuItem mntmImportCensusData;
+	public JMenuItem mntmExportToBlock;
 	public JSeparator separator_1 = new JSeparator();
 	public JSeparator separator_2 = new JSeparator();
 	public JMenuItem mntmImportAggregate = new JMenuItem("Import & aggregate custom");
@@ -200,222 +188,40 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
     		super();
     		this.f = f;
     	}
-    	
-	}
-	public void downloadNextState() {
-		try {
-			Download.istate++;
-			while( Download.istate < Download.states.length && Download.states[Download.istate].length() == 0) {
-				Download.istate++;
-			}		
-			System.out.println("downloadNextState run "+Download.istate+" "+Download.states[Download.istate]+"...");
-			//JOptionPane.showMessageDialog(null,"hi");
-			if( Download.istate >= Download.states.length ) {
-				Download.prompt = true;
-				Download.downloadAll = false;
-				JOptionPane.showMessageDialog(null, "Done downloading all states!");
-				return;
-			}
-			
-			downloadState();
-
-		} catch (Exception ex) {
-			System.out.println("ex in cyclehtread "+ex);
-			ex.printStackTrace();
-		}
-
-	}
-	
-	public void downloadState() {	
-		Download.initPaths();
-		OpenShapeFileThread ost = new OpenShapeFileThread(Download.vtd_file);
-		ImportCensus2Thread ir = new ImportCensus2Thread();
-		
-		ir.nextThread = new MergeInDemoAndElection();
-		ost.nextThread = ir;
-		Download.nextThread = ost;
-		
-		System.out.println("starting "+Download.states[Download.istate]+"...");
-		Download.downloadState(Download.istate,Download.cyear,Download.vyear);	
-	}
-	
-	public void mergeInDemoAndElection() {
-		ip.addHistory("MERGE");
-		new MergeInDemoAndElection().start();
-	}
-	public void importCountyData() {
-		ip.addHistory("IMPORT COUNTY");
-		ImportCountyLevel ivtd = new ImportCountyLevel();	
-		ivtd.nextThread = new ThreadFinishImport();
-		ivtd.start();
-	}
-	public void importTranslations() {
-		ip.addHistory("IMPORT TRANSLATIONS");
-		ImportTranslations ivtd = new ImportTranslations();	
-		ivtd.nextThread = new ThreadFinishImport();
-		ivtd.start();
-	}
-	public void importBlockElection() {
-		ip.addHistory("IMPORT ELECTIONS");
-		ImportFeatureLevel ivtd = new ImportFeatureLevel();	
-		ivtd.nextThread = new ThreadFinishImport();
-		ivtd.start();
-	}
-	
-	public void importBlockDemographics() {
-		ip.addHistory("IMPORT DEMOGRAPHICS");
-		ImportDemographics ivtd = new ImportDemographics();	
-		ivtd.nextThread = new ThreadFinishImport();
-		ivtd.start();
-	}
-	
-	public void importBlockBdistricting() {
-		ip.addHistory("IMPORT BDISTRICTING");
-		Download.prompt = false;
-		importBlocksBdistricting();	
-	}
-	
-	public void importBlockCurrentDistricts() {
-		ip.addHistory("IMPORT CURRENT_DISTRICTS");
-		Download.prompt = false;
-		importBlocksCurrentDistricts();		
-	}
-	
-	class MergeInDemoAndElection extends Thread {
-		public void run() {
-			ImportTranslations it = new ImportTranslations();
-			ImportCountyLevel icl = new ImportCountyLevel();
-			ImportFeatureLevel ivtd = new ImportFeatureLevel();
-			ImportDemographics idg = new ImportDemographics();
-			
-			it.nextThread = icl;
-			icl.nextThread = ivtd;
-			ivtd.nextThread = idg;
-			idg.nextThread = new ThreadFinishImport();
-			
-			it.start();
-		}
-	}
-	class ThreadFinishImport extends Thread {
-		public void run() {
-			trySetGroupColumns();
-
-			
-			Download.makeDoneFile();
-			dlbl.setText("Saving...");
-			saveData(Download.vtd_dbf_file, 2,false);
-			dlg.hide();
-			
-			if( Download.prompt) {
-				JOptionPane.showMessageDialog(null, "Import complete.");
-			}
-			if( Download.exit_when_done) {
-				System.exit(0);
-			}
-			if( Download.downloadAll) {
-				downloadNextState();
-				
-			}
-			ip.eventOccured();
-		}
-
-	}
-	class ThreadFinishThreads extends Thread {
-		public void run() {
-			trySetGroupColumns();
-			dlg.hide();
-			if( Download.exit_when_done) {
-				System.exit(0);
-			}
-			ip.eventOccured();
-		}
-
-	}
-	
-	class CycleThread extends Thread {
-		public int cyear;
-		public int eyear;
-		int state = 0;
-		
-		public void run() {
-			try {
-			System.out.println("CycleThread run "+state+" "+Download.states[state]+"...");
-			//JOptionPane.showMessageDialog(null,"hi");
-			if( state >= Download.states.length ) {
-				Download.prompt = true;
-				JOptionPane.showMessageDialog(null, "Done downloading all states!");
-				return;
-			}
-			int next_state = state+1;
-			while( next_state < Download.states.length && Download.states[next_state].length() == 0) {
-				next_state++;
-			}
-			Download.initPaths();
-			OpenShapeFileThread ost = new OpenShapeFileThread(Download.vtd_file);
-			ImportCensus2Thread ir = new ImportCensus2Thread();
-			MergeInDemoAndElection it = new MergeInDemoAndElection();
-			//ImportCountyLevel icl = new ImportCountyLevel();
-			CycleThread ct = new CycleThread();
-			ct.cyear = cyear;
-			ct.eyear = eyear;
-			ct.state = next_state;		
-			if( ct == null) {
-				JOptionPane.showMessageDialog(null,"ct is null!");
-			}
-			//icl.nextThread = ct;
-			//it.nextThread = icl;
-			ir.nextThread =  it;
-			ost.nextThread = ir;
-			Download.nextThread = ost;
-
-			System.out.println("starting "+Download.states[state]+"...");
-			Download.downloadState(state,cyear,eyear);	
-			
-			} catch (Exception ex) {
-				System.out.println("ex in cyclehtread "+ex);
-				ex.printStackTrace();
-			}
-		}
 	}
 
 	class ExportCustomThread extends Thread {
-		public File censusdbf_file;
-		public File foutput;
-		public boolean bdivide;
-		public boolean bdivide_choosen = false;
-		public Vector<String> vselected = null;
-		
+		File f;
+		File foutput;
+		boolean bdivide;
+		DialogSelectLayers dlgselect;
 		FileOutputStream fos = null;
 		String delimiter = "\t";
-		public Thread nextThread;
 
 		ExportCustomThread() { super(); }
 		public void init() {
-			if( censusdbf_file == null) {
-				JOptionPane.showMessageDialog(mainframe, "Select the .dbf file with census block-level data.\n");
-				JFileChooser jfc = new JFileChooser();
-				jfc.setCurrentDirectory(new File(Download.getStartPath()));
-				jfc.addChoosableFileFilter(new FileNameExtensionFilter("dbf file","dbf"));
-				jfc.showOpenDialog(null);
-				censusdbf_file = jfc.getSelectedFile();
-			}
-			if( censusdbf_file == null)  {
+			JOptionPane.showMessageDialog(mainframe, "Select the .dbf file with census block-level data.\n");
+			JFileChooser jfc = new JFileChooser();
+			jfc.setCurrentDirectory(new File(Download.getStartPath()));
+			jfc.addChoosableFileFilter(new FileNameExtensionFilter("dbf file","dbf"));
+			jfc.showOpenDialog(null);
+			f = jfc.getSelectedFile();
+			if( f == null)  {
 				return;
 			}
-			String fn = censusdbf_file.getName();
+			String fn = f.getName();
 			String ext = fn.substring(fn.length()-3).toLowerCase();
 			if( !ext.equals("dbf")) {
 				JOptionPane.showMessageDialog(null, "File format not recognized.");
 				return;
 			}
-			if( foutput == null) {
-				JOptionPane.showMessageDialog(mainframe, "Select the output file.\n");
-				JFileChooser jfc2 = new JFileChooser();
-				jfc2.setCurrentDirectory(new File(Download.getStartPath()));
-				jfc2.addChoosableFileFilter(new FileNameExtensionFilter("csv file","csv"));
-				jfc2.showSaveDialog(null);
-				foutput = jfc2.getSelectedFile();
-			}
+			
+			JOptionPane.showMessageDialog(mainframe, "Select the output file.\n");
+			JFileChooser jfc2 = new JFileChooser();
+			jfc.setCurrentDirectory(new File(Download.getStartPath()));
+			jfc2.addChoosableFileFilter(new FileNameExtensionFilter("csv file","csv"));
+			jfc2.showSaveDialog(null);
+			foutput = jfc2.getSelectedFile();
 			if( foutput == null)  {
 				return;
 			}
@@ -435,22 +241,16 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			}
 			
 			//select columns to deaggregate
-			if( vselected == null) {
-				DialogSelectLayers dlgselect;
-				dlgselect = new DialogSelectLayers();
-				dlgselect.setData(featureCollection,new Vector<String>());
-				dlgselect.show();
-				if( !dlgselect.ok) {
-					//if( is_evolving) { featureCollection.ecology.startEvolving(); }
-					return;
-				}
-				vselected = dlgselect.in;
-			
+			dlgselect = new DialogSelectLayers();
+			dlgselect.setData(featureCollection,new Vector<String>());
+			dlgselect.show();
+			if( !dlgselect.ok) {
+				//if( is_evolving) { featureCollection.ecology.startEvolving(); }
+				return;
 			}
 			//(select wether to put number as is or divide by points
-			if( !bdivide_choosen) {
-				bdivide = JOptionPane.showConfirmDialog(mainframe, "Divide values by number of points?") == JOptionPane.YES_OPTION;
-			}
+			bdivide = JOptionPane.showConfirmDialog(mainframe, "Divide values by number of points?") == JOptionPane.YES_OPTION;
+			
 			this.start();
 		}
 
@@ -458,25 +258,21 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
     	public void run() { 
     		try {
-    			System.out.println("export start");
 	    		dlg.setVisible(true);
 	    		dlbl.setText("Loading file...");
 	    		
 
-				String dbfname = censusdbf_file.getAbsolutePath();
+				String dbfname = f.getAbsolutePath();
 				//count number of points in each precinct
 	    		double[] points = getCounts(dbfname,bdivide);
  
-    			System.out.println("read start");
 	
-				DBFReader dbfreader = null;
+				DBFReader dbfreader;
 				try {
 					dbfreader = new DBFReader(dbfname);
-				} catch (Exception e1) {
+				} catch (JDBFException e1) {
 					e1.printStackTrace();
-	    			System.out.println("read exception");
-
-					//return;
+					return;
 				}
 				DataAndHeader dh = new DataAndHeader();
 				
@@ -490,14 +286,14 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 				dh.header = new String[dbfreader.getFieldCount()];
 				for( int i = 0; i < dh.header.length; i++) {
-					dh.header[i] = dbfreader.getField(i).name;
+					dh.header[i] = dbfreader.getField(i).getName();
 					featureCollection.header_data.put(
 						dh.header[i],
 						new Quadruplet<String,Integer,Integer,Byte>(
 							dh.header[i],
-							dbfreader.getField(i).length,
-							dbfreader.getField(i).decimalCount,
-							(byte)dbfreader.getField(i).type
+							dbfreader.getField(i).getLength(),
+							dbfreader.getField(i).getDecimalCount(),
+							(byte)dbfreader.getField(i).getType()
 						)
 					);
 
@@ -520,19 +316,18 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 				
 				int count = 0;
-	    		for( VTD feat : featureCollection.features) {
+	    		for( Feature feat : featureCollection.features) {
 	    			feat.geometry.makePolysFull();
 	    		}
 	    		
 	    		dlbl.setText("Doing hit tests...");
-				//Feature.compare_centroid = true;
-				//Collections.sort(featureCollection.features);
+				Feature.compare_centroid = true;
+				Collections.sort(featureCollection.features);
 	    		
 
     			String s0 = "GEOID"+delimiter+"INTPTLAT"+delimiter+"INTPTLON";
-    			
-    			for(int i = 0; i < vselected.size(); i++) {
-    				s0 += delimiter+vselected.get(i);
+    			for(int i = 0; i < dlgselect.in.size(); i++) {
+    				s0 += delimiter+dlgselect.in.get(i);
     			}
 				try {
 					//System.out.println("writing...");
@@ -559,7 +354,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			    		int ilat = (int)(dlat*Geometry.SCALELATLON);
 			    		int ilon = (int)(dlon*Geometry.SCALELATLON);
 			    		
-			    		VTD feat = getHit(dlon,dlat);
+			    		Feature feat = getHit(dlon,dlat);
 			    		
 			    		
 			    		if( feat == null) {
@@ -568,9 +363,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				    		System.out.println("miss "+dlon+","+dlat+" "+geoid+" ");
 			    		} else {
 			    			String s = ""+geoid+delimiter+dlat+delimiter+dlon;
-			    			for(int i = 0; i < vselected.size(); i++) {
+			    			for(int i = 0; i < dlgselect.in.size(); i++) {
 			    				try {
-			    					String key = vselected.get(i);
+			    					String key = dlgselect.in.get(i);
 		    						if( !bdivide) {
 		    							try {
 						    				Object str = feat.properties.get(key);
@@ -587,9 +382,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		    							try {
 						    				Object str = feat.properties.get(key);
 						    				if( str instanceof Double) {
-						    					s += delimiter+(((Double)str)/points[feat.id]);
+						    					s += delimiter+(((Double)str)/points[feat.vtd.id]);
 						    				} else {
-				    							double d = Double.parseDouble(str.toString())/points[feat.id];
+				    							double d = Double.parseDouble(str.toString())/points[feat.vtd.id];
 				    							s += delimiter+d;
 						    				}
 		    							} catch (Exception ex) {
@@ -599,7 +394,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			    				} catch (Exception ex) {
 			    					System.out.println("ex aa: "+ex);
 			    					ex.printStackTrace();
-			    					//System.exit(0);
+			    					System.exit(0);
 			    				}
 			    			}
 
@@ -650,12 +445,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 	    		
 	    		dlg.setVisible(false);
-	    		if( Download.prompt) {
-	    			JOptionPane.showMessageDialog(mainframe,"Done exporting to block level.\n"+foutput.getAbsolutePath());
-	    		}
-	    		if( nextThread != null) {
-	    			nextThread.start();
-	    		}
+	    		JOptionPane.showMessageDialog(mainframe,"Done exporting to block level.\n"+foutput.getAbsolutePath());
     		} catch (Exception ex) {
     			System.out.println("ex "+ex);
     			ex.printStackTrace();
@@ -676,7 +466,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				DBFReader dbfreader;
 				try {
 					dbfreader = new DBFReader(dbfname);
-				} catch (Exception e1) {
+				} catch (JDBFException e1) {
 					e1.printStackTrace();
 					return points;
 				}
@@ -690,7 +480,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		
 				dh.header = new String[dbfreader.getFieldCount()];
 				for( int i = 0; i < dh.header.length; i++) {
-					dh.header[i] = dbfreader.getField(i).name;
+					dh.header[i] = dbfreader.getField(i).getName();
 					if( dh.header[i].toUpperCase().trim().indexOf("GEOID") == 0) {
 						col_geoid = i;
 					}
@@ -710,13 +500,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		
 				
 				int count = 0;
-				for( VTD feat : featureCollection.features) {
+				for( Feature feat : featureCollection.features) {
 					feat.geometry.makePolysFull();
 				}
 				
 				dlbl.setText("Doing hit tests...");
-				//Feature.compare_centroid = true;
-				//Collections.sort(featureCollection.features);
+				Feature.compare_centroid = true;
+				Collections.sort(featureCollection.features);
 		
 		
 			    while (dbfreader.hasNextRecord()) {
@@ -732,7 +522,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			    		int ilat = (int)(dlat*Geometry.SCALELATLON);
 			    		int ilon = (int)(dlon*Geometry.SCALELATLON);
 			    		
-			    		VTD feat = getHit(dlon,dlat);
+			    		Feature feat = getHit(dlon,dlat);
 			    		
 			    		if( feat == null) {
 			    			System.out.print("x");
@@ -740,7 +530,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				    		System.out.println("miss "+dlon+","+dlat+" "+geoid+" ");
 
 			    		} else {
-			    			points[feat.id]++;
+			    			points[feat.vtd.id]++;
 							//String district = ""+(1+featureCollection.ecology.population.get(0).ward_districts[feat.ward.id]);
 							
 							try {
@@ -785,7 +575,300 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	    }
 	}
 
+	class ExportToBlockLevelThread extends Thread {
+		ExportToBlockLevelThread() { super(); }
+    	public void run() { 
+    		try {
+    			JOptionPane.showMessageDialog(mainframe, "Select the .dbf or .txt file with census block-level data.\n");
+				JFileChooser jfc = new JFileChooser();
+				jfc.setCurrentDirectory(new File(Download.getStartPath()));
+				jfc.addChoosableFileFilter(new FileNameExtensionFilter("dbf file","dbf"));
+				jfc.addChoosableFileFilter(new FileNameExtensionFilter("txt file","txt"));
+				jfc.showOpenDialog(null);
+				File f = jfc.getSelectedFile();
+				if( f == null)  {
+					return;
+				}
+				String fn = f.getName();
+				String ext = fn.substring(fn.length()-3).toLowerCase();
+				if( !ext.equals("dbf") && !ext.equals("txt")) {
+					JOptionPane.showMessageDialog(null, "File format not recognized.");
+					return;
+				}
+				
+    			JOptionPane.showMessageDialog(mainframe, "Select the output file.\n");
+				JFileChooser jfc2 = new JFileChooser();
+				jfc2.setCurrentDirectory(new File(Download.getStartPath()));
+				jfc2.addChoosableFileFilter(new FileNameExtensionFilter("csv file","csv"));
+				jfc2.addChoosableFileFilter(new FileNameExtensionFilter("txt file","txt"));
+				jfc2.showSaveDialog(null);
+				File foutput = jfc2.getSelectedFile();
+				if( foutput == null)  {
+					return;
+				}
+				String output_delimiter = ",";
+				FileOutputStream fos = null;
+				try {
+					System.out.println("creating..."+foutput.getAbsolutePath());
+					String ext2 = foutput.getAbsolutePath();
+					ext2 = ext2.trim().toLowerCase();
+					ext2 = ext2.substring(ext2.length()-4);
+					if( ext2.equals(".txt")) {
+						output_delimiter = "\t";
+					}
+					fos = new FileOutputStream(foutput);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+				
+				boolean include_centroid = JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(mainframe, "Include centroid (aka center point)?");
+				boolean include_header = JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(mainframe, "Include header row?");
+
+    			if( include_header) {
+    				fos.write(("GEOID10"+output_delimiter+(include_centroid ? ("INTPTLON"+output_delimiter+"INTPTLAT"+output_delimiter) : "")+"DISTRICT"+"\n").getBytes());
+    			}
+
+    			
+	    		dlg.setVisible(true);
+	    		dlbl.setText("Loading file...");
+				if( ext.equals("dbf")) {
 	
+					String dbfname = f.getAbsolutePath();
+					
+					DBFReader dbfreader;
+					try {
+						dbfreader = new DBFReader(dbfname);
+					} catch (JDBFException e1) {
+						e1.printStackTrace();
+						return;
+					}
+					DataAndHeader dh = new DataAndHeader();
+					
+					int col_lat = -1;
+					int col_lon = -1;
+					int col_geoid = -1;
+					
+		    		dlbl.setText("Reading header...");
+	
+					dh.header = new String[dbfreader.getFieldCount()];
+					for( int i = 0; i < dh.header.length; i++) {
+						dh.header[i] = dbfreader.getField(i).getName();
+						if( dh.header[i].toUpperCase().trim().indexOf("GEOID") == 0) {
+							col_geoid = i;
+						}
+						if( dh.header[i].toUpperCase().trim().indexOf("INTPTLAT") == 0) {
+							col_lat = i;
+						}
+						if( dh.header[i].toUpperCase().trim().indexOf("INTPTLON") == 0) {
+							col_lon = i;
+						}
+					}
+					if( col_geoid < 0 || col_lat < 0 || col_lon < 0) {
+						JOptionPane.showMessageDialog(mainframe, "Required columns not found.");
+						return;
+					}
+	
+		    		dlbl.setText("Making polygons...");
+	
+					
+					int count = 0;
+		    		for( Feature feat : featureCollection.features) {
+		    			feat.geometry.makePolysFull();
+		    		}
+		    		
+		    		dlbl.setText("Doing hit tests...");
+					Feature.compare_centroid = true;
+					Collections.sort(featureCollection.features);
+		    		
+		    		Hashtable<String,String> used = new Hashtable<String,String>(); 
+	
+	
+				    while (dbfreader.hasNextRecord()) {
+				    	try {
+				    		Object[] oo = dbfreader.nextRecord(Charset.defaultCharset());
+				    		String[] ss = new String[oo.length];
+				    		for( int i = 0; i < oo.length; i++) {
+				    			ss[i] = oo[i].toString();
+				    		}
+				    		double dlat = Double.parseDouble(ss[col_lat].replaceAll(",","").replaceAll("\\+",""));
+				    		double dlon = Double.parseDouble(ss[col_lon].replaceAll(",","").replaceAll("\\+",""));
+				    		String geoid = ss[col_geoid];
+				    		if( used.get(geoid) != null) {
+				    			System.out.println("duplicate geoid!: "+geoid);
+				    		}
+				    		used.put(geoid, geoid);
+				    		int ilat = (int)(dlat*Geometry.SCALELATLON);
+				    		int ilon = (int)(dlon*Geometry.SCALELATLON);
+				    		
+				    		Feature feat = getHit(dlon,dlat);
+				    		
+				    		if( feat == null) {
+				    			System.out.print("x");
+					    		System.out.println();
+					    		System.out.println("miss "+dlon+","+dlat+" "+geoid+" ");
+				    		} else {
+		    					String district = ""+(1+featureCollection.ecology.population.get(0).vtd_districts[feat.vtd.id]);
+		    					
+		    					try {
+		    						//System.out.println("writing...");
+		    						fos.write((""+geoid+output_delimiter+(include_centroid ? (dlon+output_delimiter+dlat+output_delimiter) : "")+district+"\n").getBytes());
+		    					} catch (Exception e) {
+		    						// TODO Auto-generated catch block
+		    						e.printStackTrace();
+		    						JOptionPane.showMessageDialog(mainframe,"Save failed!\nDo you have the file open in another program?");
+		    						return;
+		    					}
+				    			
+				    		}
+				    		
+				    		count++; 
+				    		if( count % 100 == 0) {
+				    			System.out.print(".");
+					    		dlbl.setText("Doing hit tests... "+count);
+				    		}
+				    		if( count % (100*100) == 0) {
+				    			System.out.println(""+count);
+	
+								try {
+									fos.flush();
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
+				    		}
+						} catch (Exception e) {
+							// TODO Auto-generated catch ward
+							System.out.println("ex x " +e);
+							e.printStackTrace();
+						}
+				    }
+				} else {
+					String delimiter = "\t";
+					FileReader fr = new FileReader(f);
+					BufferedReader br = new BufferedReader(fr);
+					DataAndHeader dh = new DataAndHeader();
+					dh.header = br.readLine().split(delimiter);
+					
+					//now select the columns
+		    		System.out.println("reading columns");
+					int col_lat = -1;
+					int col_lon = -1;
+					int col_geoid = -1;
+					for( int i = 0; i < dh.header.length; i++) {
+						if( dh.header[i].toUpperCase().trim().indexOf("GEOID") == 0) {
+							col_geoid = i;
+						}
+						if( dh.header[i].toUpperCase().trim().indexOf("INTPTLAT") == 0) {
+							col_lat = i;
+						}
+						if( dh.header[i].toUpperCase().trim().indexOf("INTPTLON") == 0) {
+							col_lon = i;
+						}
+					}
+					if( col_geoid < 0 || col_lat < 0 || col_lon < 0) {
+						JOptionPane.showMessageDialog(mainframe, "Required columns not found.");
+						return;
+					}
+	
+		    		System.out.println("doing hit tests");
+
+		    		dlbl.setText("Making polygons...");
+	
+					
+					int count = 0;
+		    		for( Feature feat : featureCollection.features) {
+		    			feat.geometry.makePolysFull();
+		    		}
+		    		
+		    		dlbl.setText("Doing hit tests...");
+					Feature.compare_centroid = true;
+					Collections.sort(featureCollection.features);
+		    		hits = 0;
+		    		misses = 0;
+		    		
+		    		Hashtable<String,String> used = new Hashtable<String,String>(); 
+	
+	
+		    		
+				    String line;
+				    while ((line = br.readLine()) != null) {
+				    	try {
+					    	String[] ss = line.split(delimiter);
+				    		double dlat = Double.parseDouble(ss[col_lat].replaceAll(",","").replaceAll("\\+",""));
+				    		double dlon = Double.parseDouble(ss[col_lon].replaceAll(",","").replaceAll("\\+",""));
+				    		String geoid = ss[col_geoid];
+				    		if( used.get(geoid) != null) {
+				    			System.out.println("duplicate geoid!: "+geoid);
+				    		}
+				    		used.put(geoid, geoid);
+				    		int ilat = (int)(dlat*Geometry.SCALELATLON);
+				    		int ilon = (int)(dlon*Geometry.SCALELATLON);
+				    		
+				    		Feature feat = getHit(dlon,dlat);
+				    		
+				    		if( feat == null) {
+				    			System.out.print("x");
+					    		System.out.println();
+					    		System.out.println("miss "+dlon+","+dlat+" "+geoid+" ");
+				    		} else {
+		    					String district = ""+(1+featureCollection.ecology.population.get(0).vtd_districts[feat.vtd.id]);
+		    					
+		    					try {
+		    						//System.out.println("writing...");
+		    						fos.write((""+geoid+output_delimiter+(include_centroid ? (dlon+output_delimiter+dlat+output_delimiter) : "")+district+"\n").getBytes());
+		    					} catch (Exception e) {
+		    						// TODO Auto-generated catch block
+		    						e.printStackTrace();
+		    						JOptionPane.showMessageDialog(mainframe,"Save failed!\nDo you have the file open in another program?");
+		    						return;
+		    					}
+				    			
+				    		}
+				    		
+				    		count++; 
+				    		if( count % 100 == 0) {
+				    			System.out.print(".");
+					    		dlbl.setText("Doing hit tests... "+count);
+				    		}
+				    		if( count % (100*100) == 0) {
+				    			System.out.println(""+count);
+	
+								try {
+									fos.flush();
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
+				    		}
+						} catch (Exception e) {
+							// TODO Auto-generated catch ward
+							System.out.println("ex x " +e);
+							e.printStackTrace();
+						}
+				    }
+					
+				}
+			    
+	    		dlbl.setText("Finalizing...");
+				try {
+					fos.flush();
+					System.out.println("closing...");
+					fos.close();
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					JOptionPane.showMessageDialog(mainframe,"Save failed!\nDo you have the file open in another program?");
+					return;
+				} 
+
+	    		
+	    		dlg.setVisible(false);
+	    		JOptionPane.showMessageDialog(mainframe,"Done exporting to block level.\n"+foutput.getAbsolutePath());
+    		} catch (Exception ex) {
+    			System.out.println("ex "+ex);
+    			ex.printStackTrace();
+    		}
+    	}
+	}
+
 	class LoadCensusFileThread extends Thread {
 		File f;
 		LoadCensusFileThread() { super(); }
@@ -817,7 +900,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				DBFReader dbfreader;
 				try {
 					dbfreader = new DBFReader(dbfname);
-				} catch (Exception e1) {
+				} catch (JDBFException e1) {
 					e1.printStackTrace();
 					return;
 				}
@@ -831,7 +914,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 				dh.header = new String[dbfreader.getFieldCount()];
 				for( int i = 0; i < dh.header.length; i++) {
-					dh.header[i] = dbfreader.getField(i).name;
+					dh.header[i] = dbfreader.getField(i).getName();
 					if( dh.header[i].toUpperCase().trim().equals("POP2010") && col_pop < 0) {
 						col_pop = i;
 					}
@@ -878,14 +961,14 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 				
 				int count = 0;
-	    		for( VTD feat : featureCollection.features) {
+	    		for( Feature feat : featureCollection.features) {
 	    			feat.geometry.makePolysFull();
-					feat.population = 0;
+					feat.vtd.population = 0;
 	    		}
 	    		
 	    		dlbl.setText("Doing hit tests...");
-				//Feature.compare_centroid = true;
-				//Collections.sort(featureCollection.features);
+				Feature.compare_centroid = true;
+				Collections.sort(featureCollection.features);
 
 
 	    		hits = 0;
@@ -903,13 +986,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			    		int ilat = (int)(dlat*Geometry.SCALELATLON);
 			    		int ilon = (int)(dlon*Geometry.SCALELATLON);
 			    		
-			    		VTD feat = getHit(dlon,dlat);
+			    		Feature feat = getHit(dlon,dlat);
 			    		if( feat == null) {
 			    			System.out.print("x");
 				    		System.out.println("miss "+dlon+","+dlat+" ");
 			    		} else {
-	    					feat.population += pop18;
-	    					feat.has_census_results = true;
+	    					feat.vtd.population += pop18;
+	    					feat.vtd.has_census_results = true;
 			    			
 			    		}
 			    		
@@ -930,9 +1013,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	    		dlbl.setText("Finalizing...");
 
 			    
-	    		for( VTD feat : featureCollection.features) {
-				    feat.properties.put("POPULATION",feat.population);
-				    feat.properties.POPULATION = (int) feat.population;
+	    		for( Feature feat : featureCollection.features) {
+				    feat.properties.put("POPULATION",feat.vtd.population);
+				    feat.properties.POPULATION = (int) feat.vtd.population;
 	    		}
 	    		System.out.println("setting pop column");
 	    		
@@ -941,9 +1024,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	    		comboBoxPopulation.setSelectedItem("POPULATION");
 	    		
 	    		dlg.setVisible(false);
-	    		if( Download.prompt) {
-	    			JOptionPane.showMessageDialog(mainframe,"Done importing census data.\nHits: "+hits+"\nMisses: "+misses);
-	    		}
+	    		JOptionPane.showMessageDialog(mainframe,"Done importing census data.\nHits: "+hits+"\nMisses: "+misses);
     		} catch (Exception ex) {
     			System.out.println("ex "+ex);
     			ex.printStackTrace();
@@ -986,14 +1067,14 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				}
 				
 				int count = 0;
-	    		for( VTD feat : featureCollection.features) {
+	    		for( Feature feat : featureCollection.features) {
 	    			feat.geometry.makePolysFull();
-					feat.population = 0;
+					feat.vtd.population = 0;
 	    		}
 	    		
 	    		dlbl.setText("Doing hit tests...");
-				//Feature.compare_centroid = true;
-				//Collections.sort(featureCollection.features);
+				Feature.compare_centroid = true;
+				Collections.sort(featureCollection.features);
 	    		
 	    		hits = 0;
 	    		misses = 0;
@@ -1009,13 +1090,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			    		double dlat = Double.parseDouble(ss[col_lat].replaceAll(",","").replaceAll("\\+",""));
 			    		double dlon = Double.parseDouble(ss[col_lon].replaceAll(",","").replaceAll("\\+",""));
 			    		
-		    			VTD feat = getHit(dlon,dlat);
+		    			Feature feat = getHit(dlon,dlat);
 				    	if( feat == null) {
 				    		System.out.println();
 				    		System.out.println("miss "+dlon+","+dlat+" ");
 				    	} else {
-	    					feat.population += Integer.parseInt(ss[col_pop]);
-	    					feat.has_census_results = true;
+	    					feat.vtd.population += Integer.parseInt(ss[col_pop]);
+	    					feat.vtd.has_census_results = true;
 				    	}
 				    } catch (Exception ex) {
 				    	ex.printStackTrace();
@@ -1028,9 +1109,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
     		
     		dlbl.setText("Finalizing...");
 		    
-    		for( VTD feat : featureCollection.features) {
-			    feat.properties.put("POPULATION",feat.population);
-			    feat.properties.POPULATION = (int) feat.population;
+    		for( Feature feat : featureCollection.features) {
+			    feat.properties.put("POPULATION",feat.vtd.population);
+			    feat.properties.POPULATION = (int) feat.vtd.population;
     		}
     		System.out.println("setting pop column");
     		
@@ -1038,9 +1119,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		    setPopulationColumn("POPULATION");
     		
     		dlg.setVisible(false);
-    		if( Download.prompt) {
-    			JOptionPane.showMessageDialog(mainframe,"Done importing census data.\nHits: "+hits+"\nMisses: "+misses);
-    		}
+    		JOptionPane.showMessageDialog(mainframe,"Done importing census data.\nHits: "+hits+"\nMisses: "+misses);
     	}
 	}
 
@@ -1048,20 +1127,17 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		protected Thread nextThread;
 		ImportCensus2Thread() { super(); }
     	public void run() { 
-    		dlbl.setText("Loading population...");
-    		importBlockDataDBF(Download.census_pop_file.getAbsolutePath(),"POPULATION","POP",false);
-    	}
-    	public void importBlockDataDBF(String path, String column, String source_column, boolean MAJORITY_VOTE) {
     		try {
 	    		dlg.setVisible(true);
+	    		dlbl.setText("Loading population...");
 	    		Hashtable<String,String> hash_population = new Hashtable<String,String>();
 	    		
 				
 				DBFReader dbfreader;
 
 				try {
-					dbfreader = new DBFReader(path);
-				} catch (Exception e1) {
+					dbfreader = new DBFReader(Download.census_pop_file.getAbsolutePath());
+				} catch (JDBFException e1) {
 					e1.printStackTrace();
 					return;
 				}
@@ -1074,12 +1150,12 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 				dh.header = new String[dbfreader.getFieldCount()];
 				for( int i = 0; i < dh.header.length; i++) {
-					dh.header[i] = dbfreader.getField(i).name;
+					dh.header[i] = dbfreader.getField(i).getName();
 					System.out.println(dh.header[i]+" ");
-					if( dh.header[i].toUpperCase().trim().indexOf(source_column) == 0) {
+					if( dh.header[i].toUpperCase().trim().indexOf("POP") == 0) {
 						col_pop = i;
 					}
-					if( dh.header[i].toUpperCase().trim().indexOf("BLOCKID") == 0 || dh.header[i].toUpperCase().trim().indexOf("GEOID") == 0) {
+					if( dh.header[i].toUpperCase().trim().indexOf("BLOCKID") == 0) {
 						col_geoid_pop = i;
 					}
 				}
@@ -1118,7 +1194,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			    
 				try {
 					dbfreader = new DBFReader(Download.census_centroid_file.getAbsolutePath());
-				} catch (Exception e1) {
+				} catch (JDBFException e1) {
 					e1.printStackTrace();
 					return;
 				}
@@ -1132,7 +1208,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 				dh.header = new String[dbfreader.getFieldCount()];
 				for( int i = 0; i < dh.header.length; i++) {
-					dh.header[i] = dbfreader.getField(i).name;
+					dh.header[i] = dbfreader.getField(i).getName();
 					System.out.println(dh.header[i]+" ");
 
 					if( dh.header[i].toUpperCase().trim().indexOf("INTPTLAT") == 0) {
@@ -1160,14 +1236,14 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 				
 				int count = 0;
-	    		for( VTD feat : featureCollection.features) {
+	    		for( Feature feat : featureCollection.features) {
 	    			feat.geometry.makePolysFull();
-					feat.population = 0;
+					feat.vtd.population = 0;
 	    		}
 	    		
 	    		dlbl.setText("Doing hit tests...");
-				//Feature.compare_centroid = true;
-				//Collections.sort(featureCollection.features);
+				Feature.compare_centroid = true;
+				Collections.sort(featureCollection.features);
 				/*
 				for(Feature f : featureCollection.features) {
 					System.out.println("centroid: "+f.geometry.full_centroid[0]+","+f.geometry.full_centroid[0]);
@@ -1206,13 +1282,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			    		int ilat = (int)(dlat*Geometry.SCALELATLON);
 			    		int ilon = (int)(dlon*Geometry.SCALELATLON);
 			    		
-			    		VTD feat = getHit(dlon,dlat);
+			    		Feature feat = getHit(dlon,dlat);
 			    		if( feat == null) {
 			    			System.out.print("x");
 				    		System.out.println("miss "+dlon+","+dlat+" "+ilat+","+ilon);
 			    		} else {
-	    					feat.population += pop18;
-	    					feat.has_census_results = true;
+	    					feat.vtd.population += pop18;
+	    					feat.vtd.has_census_results = true;
 			    			
 			    		}
 			    		
@@ -1232,15 +1308,11 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			    dbfreader.close();
 			    
 	    		dlbl.setText("Finalizing...");
-	    		
-				VTD.compare_centroid = false;
-				Collections.sort(featureCollection.features);
-
 
 			    
-	    		for( VTD feat : featureCollection.features) {
-				    feat.properties.put("POPULATION",feat.population);
-				    feat.properties.POPULATION = (int) feat.population;
+	    		for( Feature feat : featureCollection.features) {
+				    feat.properties.put("POPULATION",feat.vtd.population);
+				    feat.properties.POPULATION = (int) feat.vtd.population;
 	    		}
 	    		System.out.println("setting pop column");
 	    		
@@ -1248,16 +1320,11 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			    setPopulationColumn("POPULATION");
 	    		
 	    		dlg.setVisible(false);
-	    		if( Download.prompt) {
-	    			JOptionPane.showMessageDialog(mainframe,"Done importing census data.\nHits: "+hits+"\nMisses: "+misses);
-	    		}
+	    		JOptionPane.showMessageDialog(mainframe,"Done importing census data.\nHits: "+hits+"\nMisses: "+misses);
     		} catch (Exception ex) {
     			System.out.println("ex "+ex);
     			ex.printStackTrace();
     		}
-			VTD.compare_centroid = false;
-			Collections.sort(featureCollection.features);
-			
     		trySetBasicColumns();
     		trySetGroupColumns();
     		
@@ -1288,6 +1355,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public JMenuItem mntmWholeCounties;
 	public JLabel lblGeometricFairness;
 	public JSlider sliderBalance;
+	public JMenuItem mntmConvertWktTo;
 	public JSeparator separator_4;
 	public JMenuItem mntmNoMap;
 	public JMenuItem mntmOneMap;
@@ -1296,16 +1364,16 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public JMenuItem mntmSixteenMaps;
 	public JSeparator separator_5;
 	public JSeparator separator_6;
-	public JRadioButtonMenuItem mntmColorByDistrict;
-	public JRadioButtonMenuItem mntmColorByPop;
-	public JRadioButtonMenuItem mntmColorByVote;
-	public JRadioButtonMenuItem mntmColorByCompactness;
+	public JMenuItem mntmColorByDistrict;
+	public JMenuItem mntmColorByPop;
+	public JMenuItem mntmColorByVote;
+	public JMenuItem mntmColorByCompactness;
 	public JLabel lblElitism;
 	public JSlider sliderElitism;
 	public JRadioButton rdbtnTruncationSelection;
 	public JRadioButton rdbtnRankSelection;
 	public JRadioButton rdbtnRouletteSelection;
-	public JRadioButtonMenuItem mntmColorByWasted = new JRadioButtonMenuItem("Color by wasted votes");
+	public JMenuItem mntmColorByWasted = new JMenuItem("Color by wasted votes");
 	public JMenuItem mntmWizard = new JMenuItem("Download vtd shapefile & population from census.gov...");
 	public JSeparator separator_7 = new JSeparator();
 	public JMenuItem mntmDescramble = new JMenuItem("descramble");
@@ -1318,7 +1386,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public JMenu mnWindows = new JMenu("Windows");
 	public JButton btnElection2Columns = new JButton("Election 2 columns");
 	public JCheckBox chckbxSecondElection = new JCheckBox("Second election");
-	public JMenuItem mntmPublicMappingProject;
+	public JCheckBox chckbxThirdElection;
+	public JButton btnElection3Columns;
 	public JPanel panel_5;
 	public JLabel srlblSplitReduction;
 	public JSlider sliderSplitReduction;
@@ -1332,21 +1401,21 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public JSlider sliderVoteDilution = new JSlider();
 	public JTextField textFieldTotalSeats = new JTextField();
 	public JRadioButton lblTotalSeats = new JRadioButton("Total seats");
-	VTD getHit(double dlon, double dlat) {
+	Feature getHit(double dlon, double dlat) {
 		int ilat = (int)(dlat*Geometry.SCALELATLON);
 		int ilon = (int)(dlon*Geometry.SCALELATLON);
 		dlon *= Geometry.SCALELATLON;
 		
 		double min_x = 0;
-		double max_x = featureCollection.sortedFeatures.size()-1;
-		double min_lon = featureCollection.sortedFeatures.get((int)min_x).geometry.full_centroid[0];
-		double max_lon = featureCollection.sortedFeatures.get((int)max_x).geometry.full_centroid[0];
+		double max_x = featureCollection.features.size()-1;
+		double min_lon = featureCollection.features.get((int)min_x).geometry.full_centroid[0];
+		double max_lon = featureCollection.features.get((int)max_x).geometry.full_centroid[0];
 		//System.out.println("min_lon "+min_lon);
 		//System.out.println("dlon "+dlon);
 		//System.out.println("max_lon "+max_lon);
 		
 		int itestx = 0;
-		for( int i = 0; i < 250; i++) {
+		for( int i = 0; i < 100; i++) {
 			if( i == 99) {
 				//System.out.println("i0: "+i);
 			}
@@ -1362,13 +1431,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			if( itestx >= max_x-0.00000000000001) {
 				itestx--;
 			}
-			if( itestx >= featureCollection.sortedFeatures.size()) {
-				itestx = featureCollection.sortedFeatures.size()-1;
+			if( itestx >= featureCollection.features.size()) {
+				itestx = featureCollection.features.size()-1;
 			}
 			if( itestx < 0) {
 				itestx = 0;
 			}
-			double test_lon = featureCollection.sortedFeatures.get(itestx).geometry.full_centroid[0];
+			double test_lon = featureCollection.features.get(itestx).geometry.full_centroid[0];
 			if( test_lon > dlon) {
 				max_lon = test_lon;
 				max_x = itestx;
@@ -1384,9 +1453,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				break;
 			}
 		}
-		for( int i = 0; i < featureCollection.sortedFeatures.size(); i++ ) {
-			if(  itestx+i < featureCollection.sortedFeatures.size()) {
-				VTD testfeat = featureCollection.sortedFeatures.get(itestx+i);
+		for( int i = 0; i < featureCollection.features.size(); i++ ) {
+			if(  itestx+i < featureCollection.features.size()) {
+				Feature testfeat = featureCollection.features.get(itestx+i);
 				for( int j = 0; j < testfeat.geometry.polygons_full.length; j++ ) {
 					if( testfeat.geometry.polygons_full[j].contains(ilon,ilat)) {
 						hits++;
@@ -1395,7 +1464,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				}
 			}
 			if( itestx-i >= 0) {
-				VTD testfeat = featureCollection.sortedFeatures.get(itestx-i);
+				Feature testfeat = featureCollection.features.get(itestx-i);
 				for( int j = 0; j < testfeat.geometry.polygons_full.length; j++ ) {
 					if( testfeat.geometry.polygons_full[j].contains(ilon,ilat)) {
 						hits++;
@@ -1407,7 +1476,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		}
 		//old way
 		System.out.print("n");
-		for( VTD feat : featureCollection.sortedFeatures) {
+		for( Feature feat : featureCollection.features) {
 			Polygon[] polys = feat.geometry.polygons_full;
 			for( int i = 0; i < polys.length; i++) {
 				if( polys[i].contains(ilon,ilat)) {
@@ -1423,9 +1492,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 	class ImportAggregateCustom extends Thread {
 		File f;
-		int opt = 0;
-		int ACCUMULATE = 0;
-		int OVERWRITE = 1;
 		ImportAggregateCustom() { super(); }
 		public void init() {
 			JFileChooser jfc = new JFileChooser();
@@ -1438,30 +1504,12 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			if( f == null)  {
 				return;
 			}
-			String[] options = new String[]{"Accumulate","Majority vote"};
-			opt = JOptionPane.showOptionDialog(mainframe, "Accumulate values or majority vote?", "Select option", 0,0,null,options,options[0]);
-			if( opt < 0) {
-				System.out.println("aborted.");
-				return;
-			}
 			
 			start();
 		}
     	public void run() {
-    		boolean CONTAINS_HEADER = false; 
-    		boolean MAJORITY_VOTE = false;
-   			System.out.println("importBlockData0 "+f.getAbsolutePath());
-   		    		
-    		importBlockData( f.getAbsolutePath().trim(), true, opt == 1, new String[]{"IMPORTED"}, new String[]{"IMPORTED"});
-    	}
-    	public void importBlockData(String fn, boolean CONTAINS_HEADER, boolean MAJORITY_VOTE, String[] source_column_names,String[] dest_column_names) {
-			boolean one_indexed = true;
-			Object[] col_names = null;
     		try {
-    			System.out.println("importBlockData "+fn);
-    			opt = MAJORITY_VOTE ? 1 : 0;
-    			f = new File(fn);
-				//String fn = f.getName().trim();
+				String fn = f.getName().trim();
 				String ext = fn.substring(fn.length()-3).toLowerCase();
 				DataAndHeader dh = new DataAndHeader();
 
@@ -1470,9 +1518,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	    		System.out.println("making polygons");
 				int count = 0;
 				
-	    		for( VTD feat : featureCollection.features) {
+	    		for( Feature feat : featureCollection.features) {
 	    			feat.geometry.makePolysFull();
-					feat.population = 0;
+					feat.vtd.population = 0;
 	    		}
 
 				if( ext.equals("csv") || ext.equals("txt")) {
@@ -1490,15 +1538,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					//TODO: CONVERT TO IMPORT CUSTOM
 					FileReader fr = new FileReader(f);
 					BufferedReader br = new BufferedReader(fr);
-					if( !CONTAINS_HEADER) {
-						dh.header = new String[source_column_names.length+1];
-						dh.header[0] = "GEOID";
-						for( int i = 0; i < source_column_names.length; i++) {
-							dh.header[i+1] = source_column_names[i];
-						}
-					} else {
-						dh.header = br.readLine().split(delimiter);
-					}
+					dh.header = br.readLine().split(delimiter);
 					
 					//now select the columns
 		    		System.out.println("reading columns");
@@ -1525,10 +1565,17 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 						return;
 					}
 					
-
+					String[] options = new String[]{"Accumulate","Majority vote"};
+					int ACCUMULATE = 0;
+					int OVERWRITE = 1;
+					int opt = JOptionPane.showOptionDialog(mainframe, "Accumulate values or majority vote?", "Select option", 0,0,null,options,options[0]);
+					if( opt < 0) {
+						System.out.println("aborted.");
+						return;
+					}
 					
 		    		dlg.setVisible(true);
-					col_names = dsc.in.toArray();
+					Object[] col_names = dsc.in.toArray();
 					int[] col_indexes = new int[dsc.in.size()]; 
 					for( int i = 0; i < col_indexes.length; i++) {
 						String test = ((String)col_names[i]).toUpperCase().trim();
@@ -1542,8 +1589,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		    		System.out.println("doing hit tests");
 
 		    		dlbl.setText("Doing hit tests...");
-					//Feature.compare_centroid = true;
-		    		//Collections.sort(featureCollection.features);
+					Feature.compare_centroid = true;
+		    		Collections.sort(featureCollection.features);
 		    		hits = 0;
 		    		misses = 0;
 		    		
@@ -1555,7 +1602,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	    						featureCollection.features.get(0).properties.put((String)col_names[j]," ");		
 	    					}
     						//reset hash in all features
-	    					for( VTD feat : featureCollection.features) {
+	    					for( Feature feat : featureCollection.features) {
 	    						feat.properties.temp_hash.clear();
 	    						feat.points = new Vector<double[]>();
 	    					}
@@ -1572,20 +1619,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					    		double dlat = Double.parseDouble(ss[col_lat].replaceAll(",","").replaceAll("\\+",""));
 					    		double dlon = Double.parseDouble(ss[col_lon].replaceAll(",","").replaceAll("\\+",""));
 					    		
-				    			VTD feat = getHit(dlon,dlat);
+				    			Feature feat = getHit(dlon,dlat);
 						    	if( feat == null) {
 						    		System.out.println();
 						    		System.out.println("miss "+dlon+","+dlat+" ");
 						    	} else {
 			    					if( opt == OVERWRITE) { //overwrite
 			    						String dist = ss[col_indexes[0]];
-			    						//ignore zz's
-			    						if(dist.trim().equals("ZZ")) {
-			    							continue;
-			    						}
-			    						if( dist.trim().equals("0")) {
-			    							one_indexed = false;
-			    						}
 			    						feat.points.add(new double[]{dlon,dlat,Integer.parseInt(dist)});
 			    						Integer integer = feat.properties.temp_hash.get(dist);
 			    						if( integer == null) {
@@ -1626,10 +1666,10 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					    }
 						String key = ((String)col_names[0]).trim().toUpperCase();
     					if( opt == OVERWRITE) { //overwrite
-    						for( VTD feat : featureCollection.features) {
+    						for( Feature feat : featureCollection.features) {
     							if( feat.properties.temp_hash.size() == 0) {
     								System.out.println("no values");
-    								//feat.properties.put(key,"1");
+    								feat.properties.put(key,"1");
     								continue;
     							}
     							String max = "";
@@ -1658,79 +1698,11 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					String key = ((String)col_names[0]).trim().toUpperCase();
 					System.out.println("key: "+key);
 					
-					Vector<VTD> missed = new Vector<VTD>();
 					if( opt == OVERWRITE) {
-						for( VTD feat : featureCollection.features) {
-							boolean found = feat.setDistFromPoints(key,false);//one_indexed);
-							if( !found) {
-								missed.add(feat);
-							}
-						}
-						
-						//check for zeros, if none, decrement all.
-						boolean found_zero = false;
-						for( VTD feat : featureCollection.features) {
-							if( feat.get(key) == null) {
-								continue;
-							}
-							int ndx = Integer.parseInt(feat.get(key).toString());
-							if( ndx == 0) {
-								found_zero = true;
-								break;
-							}
-						}
-						if( !found_zero && false) {
-							for( VTD feat : featureCollection.features) {
-								if( feat.get(key) == null) {
-									continue;
-								}
-								int ndx = Integer.parseInt(feat.get(key).toString());
-								feat.put(key,""+(ndx-1));
-							}
+						for( Feature feat : featureCollection.features) {
+							feat.setDistFromPoints(key);
 						}
 					}
-					try {
-						
-						//fill in empties with neighbors
-						Hashtable<String,Integer> counts = new Hashtable<String,Integer>();
-						int l = 0;
-						System.out.println(""+missed.size()+" missing");
-						while (l < 5 && missed.size() > 0) {
-							System.out.println(""+missed.size()+" missing");
-							for( int k = 0; k < missed.size(); k++) {
-								VTD feat = missed.get(k);
-								counts.clear();
-								for(VTD vtd : feat.neighbors) {
-									String p = vtd.feature.properties.get(key).toString();
-									Integer i = counts.get(p);
-									if( i == null) {
-										i = new Integer(0);
-										counts.put(p, i);
-									}
-									i++;
-								}
-								String best = "";
-								int max = 0;
-								if( counts.entrySet().size() == 0) {
-									System.out.println("no neighbors found! "+l);
-								} else {
-									missed.remove(feat);
-									k--;
-									for( Entry<String,Integer> entries : counts.entrySet()) {
-										if( entries.getValue() > max) {
-											max = entries.getValue();
-											best = entries.getKey();
-										}
-									}
-									feat.properties.put(key,best);
-								}
-							}
-							l++;
-						}
-					} catch (Exception ex) {
-						ex.printStackTrace();
-					}
-
 
 		    		dlg.setVisible(false);
 					
@@ -1743,8 +1715,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		    		System.out.println("done");
 
 		    		if( opt == OVERWRITE) {
-						for( VTD feat : featureCollection.features) {
-							feat.setDistFromPoints(key,false);//,one_indexed);
+						for( Feature feat : featureCollection.features) {
+							feat.setDistFromPoints(key);
 						}
 					}
 
@@ -1765,7 +1737,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					DBFReader dbfreader;
 					try {
 						dbfreader = new DBFReader(dbfname);
-					} catch (Exception e1) {
+					} catch (JDBFException e1) {
 						e1.printStackTrace();
 						return;
 					}
@@ -1775,7 +1747,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 					dh.header = new String[dbfreader.getFieldCount()];
 					for( int i = 0; i < dh.header.length; i++) {
-						dh.header[i] = dbfreader.getField(i).name;
+						dh.header[i] = dbfreader.getField(i).getName();
 					}
 
 					//now select the columns
@@ -1803,7 +1775,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					}
 					
 		    		dlg.setVisible(true);
-					col_names = dsc.in.toArray();
+					Object[] col_names = dsc.in.toArray();
 					int[] col_indexes = new int[dsc.in.size()]; 
 					for( int i = 0; i < col_indexes.length; i++) {
 						String test = ((String)col_names[i]).toUpperCase().trim();
@@ -1821,8 +1793,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					}
 
 		    		dlbl.setText("Doing hit tests...");
-					//Feature.compare_centroid = true;
-		    		//Collections.sort(featureCollection.features);
+					Feature.compare_centroid = true;
+		    		Collections.sort(featureCollection.features);
 
 		    		
 		    		//and finally process each row
@@ -1836,7 +1808,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				    		double dlat = Double.parseDouble(ss[col_lat].replaceAll(",","").replaceAll("\\+",""));
 				    		double dlon = Double.parseDouble(ss[col_lon].replaceAll(",","").replaceAll("\\+",""));
 	
-			    			VTD feat = getHit(dlon,dlat);
+			    			Feature feat = getHit(dlon,dlat);
 					    	if( feat == null) {
 					    		System.out.print("x");
 					    	} else {
@@ -1887,92 +1859,14 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
     			System.out.println("ex "+ex);
     			ex.printStackTrace();
     		}
-    		if( opt == 1) {
-    			for( int i = 0; i < col_names.length; i++) {
-    				featureCollection.fixDistrictAssociations((String)col_names[i]);
-    			}	
-    		}
     	}
 	}
-	public void exportBlockData(String string) {//, boolean equals) {
-		ip.addHistory("EXPORT BLOCKS");
-		boolean ok = true;
-		if( comboBoxDistrictColumn.getSelectedIndex() < 0 ) {
-			ok = false;
-		}
-		if( ok && comboBoxDistrictColumn.getSelectedItem() == null) {
-			ok = false;
-		}
-		if( ok && ((String)comboBoxDistrictColumn.getSelectedItem()).length() == 0) {
-			ok = false;
-		}
-		if( ok) {
-			/*
-			JFileChooser jfc = new JFileChooser();
-			FileNameExtensionFilter filter = new FileNameExtensionFilter("Dbase file", "dbf");
-			jfc.setFileFilter(filter);
-			jfc.showOpenDialog(null);
-			File fd = jfc.getSelectedFile();
-			if( fd == null) {
-				return;
-			}*/
-			//ExportToBlockLevelThread exp = new ExportToBlockLevelThread();
-			/*
-			 		File f;
-		File foutput;
-		boolean bdivide;
-		DialogSelectLayers dlgselect;
-		FileOutputStream fos = null;
-		String delimiter = "\t";
-		public ThreadFinishThreads nextThread;
 
-			 */
-
-			/*
-			public File censusdbf_file;
-			public File foutput;
-			public boolean bdivide;
-			public boolean bdivide_choosen = false;
-			public Vector<String> vselected = null;
-			 */
-			Download.downloadAndExtractCentroids();
-			ExportCustomThread exp = new ExportCustomThread();
-			//Download.nextThread = exp;
-			exp.nextThread = new ThreadFinishThreads();
-			//Download.census_centroid_file  
-			Download.initPaths();
-			exp.censusdbf_file = Download.census_centroid_file;
-			String output = Download.getStartPath()+"blocks.txt";
-			System.out.println("input: "+exp.censusdbf_file);
-			System.out.println("output: "+exp.foutput);
-			exp.foutput = new File(output);
-			exp.bdivide = false;
-			exp.bdivide_choosen = true;
-			exp.vselected = new Vector<String>();
-			exp.vselected.add(Applet.mainFrame.project.district_column);
-			exp.init();
-		} else {
-			JOptionPane.showMessageDialog(MainFrame.mainframe,"You must select a district column first.");
-		}
-	}
-
-	public void open(File f) {
-		OpenShapeFileThread ot = new OpenShapeFileThread(f);
-		ot.nextThread = new ThreadFinishThreads();
-		ot.start();
-	}
-
-	public class OpenShapeFileThread extends FileThread {
+	class OpenShapeFileThread extends FileThread {
 		OpenShapeFileThread(File f) { super(f);  }
 		Thread nextThread = null;
     	public void run() { 
-    		if( f == null) { 
-    			System.out.println("OpenShapeFileThread null file, getting from Download class... ");
-    			Download.initPaths(); 
-    			this.f = Download.vtd_file; 
-    		} else {
-				ip.addHistory("OPEN \""+f.getAbsolutePath()+"\"");
-			}
+    		if( f == null) { this.f = Download.vtd_file; }
     		try {
     		    dlbl.setText("Loading file "+f.getName()+"...");
 
@@ -1985,8 +1879,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					panelStats.featureCollection = featureCollection;
 				}
 	
-				featureCollection.features = new Vector<VTD>();
-				HashMap<String,VTD> hmFeatures = new HashMap<String,VTD>();
+				featureCollection.features = new Vector<Feature>();
+				HashMap<String,Feature> hmFeatures = new HashMap<String,Feature>();
 	
 				String s = f.getName().toLowerCase();
 				System.out.println("Processing "+s+"...");
@@ -1995,7 +1889,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				stopEvolving();
 				geo_loaded = false;
 				evolving = false;
-				VTD.display_mode = 0;
+				Feature.display_mode = 0;
 				setEnableds();
 				
 				//FeatureCollection fc = new FeatureCollection();
@@ -2005,22 +1899,19 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				loadShapeFile(f);
 	
 	
-				for( VTD fe : hmFeatures.values()) {
+				for( Feature fe : hmFeatures.values()) {
 					featureCollection.features.add(fe);
 				}
 				finishLoadingGeography();
+				if( nextThread != null) {
+					nextThread.start();
+					nextThread = null;
+				}
 				if( Download.istate < 0) {
 					setTitle("Automatic Redistricter");
 				} else {
 					setTitle("Automatic Redistricter - "+Download.states[Download.istate]+" ("+Download.cyear+")");
 				}
-				if( nextThread != null) {
-					nextThread.start();
-					nextThread = null;
-				} else {
-					ip.eventOccured();
-				}
-
     		} catch (Exception ex) {
     			System.out.println("ex "+ex);
     			ex.printStackTrace();
@@ -2034,12 +1925,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	class ImportTranslations extends Thread {
 		Thread nextThread = null;
 		public void run() {
-			dlg.show();
-			dlbl.setText("Adding translations...");
-			VTD.compare_centroid = false;
-			Collections.sort(featureCollection.features);
-
-			Hashtable<String,VTD> featmap = new Hashtable<String,VTD>();
+			Hashtable<String,Feature> featmap = new Hashtable<String,Feature>();
 			String skey="GEOID";
 			String[] headers = featureCollection.getHeaders();
 			for( int i = 0; i < headers.length; i++) {
@@ -2059,40 +1945,29 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			Download.init();
 			String state_abbr = Download.state_to_abbr.get(Download.states[Download.istate]);
 			System.out.println("state_abbr: |"+state_abbr+"|");
-			for(VTD feat : featureCollection.features) {
+			for(Feature feat : featureCollection.features) {
 				featmap.put((String) feat.properties.get(skey),feat);
 			}
-			Vector<String[]> v = processFeaturerenameFile();
+			Vector<String[]> v = processVTDrenameFile();
 			System.out.println("size: "+v.size());
 			String[] header = v.remove(0);
-			int[] care = new int[]{3,5,6};
-			int matches = 0;
-			int non_matches = 0;
+			int[] care = new int[]{3,6};
 			for(String[] ss : v) {
 				if( !ss[0].equals(state_abbr)) {
 					//System.out.print(".");
 					continue;
 				}
-				VTD feat = featmap.get(ss[ikey]);
+				Feature feat = featmap.get(ss[ikey]);
 				if( feat == null) {
-					if( ss[ikey].length() >= 6) {
-						ss[ikey] = ss[ikey].substring(3);
-					}
-					feat = featmap.get(ss[ikey]);
-					if( feat == null) {
-						System.out.println("no match found!: "+ss[ikey]);
-						non_matches++;
-						continue;
-					}
+					System.out.println("no match found!: "+ss[ikey]);
+					continue;
 				}
-				matches++;
 				//System.out.println("match found!: "+ss[ikey]);
 				for( int j = 0; j < care.length; j++) {
 					int k = care[j];
 					feat.properties.put(header[k],ss[k]);
 				}
 			}
-			System.out.println("translations matches: "+matches+" non_matches: "+non_matches);
 			System.out.println("done nextThred: "+nextThread);
 			if( nextThread != null) {
 				nextThread.start();
@@ -2102,19 +1977,10 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	}
 
 	class ImportCountyLevel extends Thread {
-		public Thread nextThread;
+		Thread nextThread = null;
 		public void run() {
-			dlbl.setText("Importing county data...");
-
-			if( nextThread == null) {
-				//JOptionPane.showMessageDialog(null,"nextThread is null!");
-			}
-			VTD.compare_centroid = false;
-			Collections.sort(featureCollection.features);
-
-			System.out.println("import county level start");
-			//String path = "ftp://autoredistrict.org/pub/county_level_stats/Merged%20--%20"+Download.states[Download.istate]+".txt";
-			String path = "http://autoredistrict.org/county_level_stats/Merged%20--%20"+Download.states[Download.istate].replaceAll(" ", "%20")+".txt";
+			System.out.println("import count level start");
+			String path = "ftp://autoredistrict.org/pub/county_level_stats/Merged%20--%20"+Download.states[Download.istate]+".txt";
 			System.out.println("url: "+path);
 	    	System.out.println("0");
 		    URL url;
@@ -2134,7 +2000,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		        is = url.openStream();  // throws an IOException
 		    	System.out.println("3");
 		        br = new BufferedReader(new InputStreamReader(is));
-		    	System.out.println("4..");
+		    	System.out.println("4");
 
 		        while ((line = br.readLine()) != null) {
 			    	System.out.print(".");
@@ -2154,143 +2020,75 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	        } catch (IOException ioe) {
 	            // nothing to see here
 	        }
-			if( nextThread == null) {
-				//JOptionPane.showMessageDialog(null,"nextThread is null!");
-			}
-			System.out.println("5..");
-			
 	        String[] headers = v.remove(0);
 			//todo: populate v with the data.
-			String county_column = "COUNTYFP10";
-			String county_column2 = "COUNTY_NAM";
+			String county_column = "COUNTY_NAME";
 			int iCountyColumn = 0;
 			
 			//collect counties;
-			HashMap<String,Vector<VTD>> county_feats = new HashMap<String,Vector<VTD>>();
-			HashMap<String,Double> county_pops = new HashMap<String,Double>();
-			for( VTD feat : featureCollection.features) {
-				try {
+			HashMap<String,Vector<Feature>> county_feats = new HashMap<String,Vector<Feature>>();
+			HashMap<String,Integer> county_pops = new HashMap<String,Integer>();
+			for( Feature feat : featureCollection.features) {
 				String county = (String) feat.properties.get(county_column);
-				if(county == null) {
-					county = (String) feat.properties.get(county_column2);	
-				}
 				county = county.trim().toUpperCase();
 				
-				Vector<VTD> vf = county_feats.get(county);
+				Vector<Feature> vf = county_feats.get(county);
 				if( vf == null) { 
-					vf = new Vector<VTD>();
+					vf = new Vector<Feature>();
 					county_feats.put(county,vf);
 				}
 				vf.add(feat);
-				Double i = county_pops.get(county);
+				Integer i = county_pops.get(county);
 				if( i == null) { 
-					i = new Double(0);
+					i = new Integer(0);
 					county_pops.put(county,i);
 				}
-				//if( feat.properties.POPULATION == 0) {
-				Double d = Double.parseDouble(feat.properties.get(project.population_column).toString());
-				feat.properties.POPULATION = d.intValue();
-				//}
+				if( feat.properties.POPULATION == 0) {
+					Double d = Double.parseDouble(feat.properties.get(project.population_column).toString());
+					feat.properties.POPULATION = d.intValue();
+				}
 				i += feat.properties.POPULATION;
 				county_pops.put(county,i);
-				} catch (Exception ex) {
-					System.out.println("ex "+ex);
-					ex.printStackTrace();
-				}
 			}
 			
 			//now deaggregate proportional
-			System.out.println("deaggregating proportional...");
-			if( nextThread == null) {
-				//JOptionPane.showMessageDialog(null,"nextThread is null!");
-			}
-
 			for( String[] ss : v) {
-				String[] tries = new String[]{" COUNTY"," PARISH"," BOROUGH"," CENSUS AREA"," MUNICIPALITY"};
-				try {
-				String incounty = ss[iCountyColumn+1].trim().toUpperCase();
-				Vector<VTD> vf = county_feats.get(incounty);
+				String incounty = ss[iCountyColumn].trim().toUpperCase();
+				Vector<Feature> vf = county_feats.get(incounty);
 				if( vf == null) {
-					while( incounty.length() > 1 && incounty.substring(0,1).equals("0")) {
-						incounty = incounty.substring(1);
-					}
+					incounty += " COUNTY";
 					vf = county_feats.get(incounty);
 					if( vf == null) {
-						incounty = ss[iCountyColumn].trim().toUpperCase();
-						vf = county_feats.get(incounty);
-						if( vf == null) {
-							for( int i = 0; i < tries.length; i++) {
-								vf = county_feats.get(incounty+tries[i]);
-								if( vf != null) {
-									incounty += tries[i];
-									break;
-								}
-							}
-							if( vf == null) {
-									//System.out.println("not found!: "+incounty);
-									continue;
-							}
-						}
+							System.out.println("not found!: "+incounty);
+							continue;
 					}
 				}
 				double total_pop = (double)county_pops.get(incounty);
-				//System.out.println("found!: "+incounty+" "+total_pop);
+				System.out.println("found!: "+incounty+" "+total_pop);
 				double[] dd = new double[ss.length];
 				for( int i = 0; i < ss.length; i++) {
-					if( headers[i].equals("VAP_HISPANIC")) {
-						headers[i] = "VAP_HISPAN";
-					}
 					if( i == iCountyColumn || headers[i].equals("COUNTY_NAME") || headers[i].equals("COUNTY_FIPS")) {
 						continue;
 					}
 					dd[i] = Double.parseDouble(ss[i]);///total_pop;
 				}
-				double confirm_tot = 0;
-				double confirm_tot2 = 0;
-				double confirm_tot3 = 0;
-				//double[] dd0 = new double[ss.length];
-				for(VTD feat : vf) {
+				for(Feature feat : vf) {
 					double feat_pop = feat.properties.POPULATION;
-					confirm_tot += feat_pop/total_pop;
 					for( int i = 0; i < ss.length; i++) {
 						if( i == iCountyColumn || headers[i].equals("COUNTY_NAME") || headers[i].equals("COUNTY_FIPS")) {
 							continue;
 						}
-						double add = (dd[i]*feat_pop/total_pop);
-						feat.properties.put(headers[i], ""+add);
-						if( i == 3) {
-							confirm_tot2 += add;
-						}
-						if( i == 4) {
-							confirm_tot3 += add;
-						}
+						feat.properties.put(headers[i], ""+(dd[i]*feat_pop/total_pop));
 					}
 				}
-				System.out.println("found!: "+incounty+" "+total_pop+" "+confirm_tot+" "
-						+dd[3]+" "+confirm_tot2+" "+dd[4]+" "+confirm_tot3+" "
-						+ss.length
-						+" "+headers[3]+" "+headers[4]
-						);
-
-				} catch (Exception ex) {
-					System.out.println("ex: "+ex);
-					ex.printStackTrace();
-				}
 			}
 			
-			if( nextThread == null) {
-				//JOptionPane.showMessageDialog(null,"nextThread is null!");
-			}
 			
-			System.out.println("setting columns final...");
+			
 			trySetBasicColumns();
 			trySetGroupColumns();
 			System.out.println("done county data merge");
-			if( nextThread == null) {
-				System.out.println("no next thread");
-				//JOptionPane.showMessageDialog(null,"nextThread is null!");
-			} else {
-				System.out.println("starting next thread");
+			if( nextThread != null) {
 				nextThread.start();
 				nextThread = null;
 			}
@@ -2328,7 +2126,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			}
 		}
 		System.out.println();
-		System.out.println("renumber done.");
+		System.out.println("done.");
 		mapPanel.invalidate();
 		mapPanel.repaint();
 	}
@@ -2390,12 +2188,12 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					panelStats.featureCollection = featureCollection;
 				}
 	
-				featureCollection.features = new Vector<VTD>();
-				HashMap<String,VTD> hmFeatures = new HashMap<String,VTD>();
+				featureCollection.features = new Vector<Feature>();
+				HashMap<String,Feature> hmFeatures = new HashMap<String,Feature>();
 				
 				stopEvolving();
 				geo_loaded = false;
-				VTD.display_mode = 0;
+				Feature.display_mode = 0;
 				setEnableds();
 
 				if( panelStats != null) {
@@ -2418,7 +2216,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				    		//System.out.println("found "+polygons.length+" polys");
 				    	}
 				    	
-						VTD feature = new VTD();
+						Feature feature = new Feature();
 						featureCollection.features.add(feature);
 						feature.properties = new Properties();
 						feature.geometry = new Geometry();
@@ -2468,7 +2266,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 	    		dlg.setVisible(false);
 	    		
-				for( VTD fe : hmFeatures.values()) {
+				for( Feature fe : hmFeatures.values()) {
 					featureCollection.features.add(fe);
 				}
 				finishLoadingGeography();
@@ -2576,7 +2374,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				    		//System.out.println("found "+polygons.length+" polys");
 				    	}
 				    	
-						VTD feature = new VTD();
+						Feature feature = new Feature();
 						feature.geometry = new Geometry();
 
 						feature.geometry.coordinates = new double[polygons.length][][];
@@ -2689,8 +2487,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				panelStats.featureCollection = featureCollection;
 			}
 
-			featureCollection.features = new Vector<VTD>();
-			HashMap<String,VTD> hmFeatures = new HashMap<String,VTD>();
+			featureCollection.features = new Vector<Feature>();
+			HashMap<String,Feature> hmFeatures = new HashMap<String,Feature>();
 
 		    dlg.setVisible(true);
 	
@@ -2700,7 +2498,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			
 			stopEvolving();
 			geo_loaded = false;
-			VTD.display_mode = 0;
+			Feature.display_mode = 0;
 			setEnableds();
 			
 			FeatureCollection fc = new FeatureCollection();
@@ -2714,7 +2512,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				System.out.println("ex "+ex);
 				ex.printStackTrace();
 			}
-			for( VTD fe : fc.features) {
+			for( Feature fe : fc.features) {
 				featureCollection.features.add(fe);
 				//if( fe.properties.DISTRICT != null && !fe.properties.DISTRICT.toLowerCase().equals("null") ) {
 				/*
@@ -2730,7 +2528,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			
 		    dlbl.setText("Initializing wards...");
 
-			for( VTD fe : hmFeatures.values()) {
+			for( Feature fe : hmFeatures.values()) {
 				featureCollection.features.add(fe);
 			}
 			finishLoadingGeography();
@@ -2867,25 +2665,14 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		
 	}
 	public void getMinMaxXY() {
-		if( Settings.national_map) {
-			System.out.println("national");
-			minx = -127.50;
-			miny = 28.70;
-			maxx = -55.90;
-			maxy = 49.10;
-			System.out.println(""+minx+","+miny);
-			System.out.println(""+maxx+","+maxy);
-			featureCollection.recalcDlonlat();
-			return;
-		}
-		Vector<VTD> features = featureCollection.features;
+		Vector<Feature> features = featureCollection.features;
 
 		minx = features.get(0).geometry.coordinates[0][0][0];
 		maxx = features.get(0).geometry.coordinates[0][0][0];
 		miny = features.get(0).geometry.coordinates[0][0][1];
 		maxy = features.get(0).geometry.coordinates[0][0][1];
 		HashSet<String> types = new HashSet<String>();
-		for( VTD f : features) {
+		for( Feature f : features) {
 			double[][][] coordinates2 = f.geometry.coordinates;
 			for( int j = 0; j < coordinates2.length; j++) {
 				double[][] coordinates = coordinates2[j];
@@ -2910,11 +2697,11 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		featureCollection.recalcDlonlat();
 	}
 	public void finishLoadingGeography() {
-		Vector<VTD> features = featureCollection.features;
+		Vector<Feature> features = featureCollection.features;
 		System.out.println(features.size()+" precincts loaded.");
 	    getMinMaxXY();
 		System.out.println("Initializing wards...");
-		featureCollection.initFeatures();
+		featureCollection.initwards();
 	    dlbl.setText("Setting min and max coordinates...");
 	    
 	    getMinMaxXY();
@@ -2923,20 +2710,10 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		
 	    dlbl.setText("Initializing ecology...");
 	    try {
-	    	//featureCollection.initEcology();
+	    	featureCollection.initEcology();
 	    	addEcologyListeners();
 	    } catch (Exception ex) {
 	    	System.out.println("init ecology ex: "+ex);
-	    	ex.printStackTrace();
-	    }
-	    
-    	System.out.println("resize ex1");
-
-	    try {
-	    	featureCollection.ecology.resize_population();
-			//featureCollection.loadDistrictsFromProperties("");
-	    } catch (Exception ex) {
-	    	System.out.println("resize ex: "+ex);
 	    	ex.printStackTrace();
 	    }
 		System.out.println("filling combo boxes...");
@@ -2944,26 +2721,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		mapPanel.invalidate();
 		mapPanel.repaint();
 		
-    	System.out.println("resize ex2");
-	    try {
-	    	featureCollection.ecology.resize_population();
-			//featureCollection.loadDistrictsFromProperties("");
-	    } catch (Exception ex) {
-	    	System.out.println("resize ex2: "+ex);
-	    	ex.printStackTrace();
-	    }
-		
 		
 		setDistrictColumn(project.district_column);
 		//featureCollection.loadDistrictsFromProperties(project.district_column);
-    	System.out.println("resize ex3");
-	    try {
-	    	featureCollection.ecology.resize_population();
-			//featureCollection.loadDistrictsFromProperties("");
-	    } catch (Exception ex) {
-	    	System.out.println("resize ex3: "+ex);
-	    	ex.printStackTrace();
-	    }
 		
 		mapPanel.featureCollection = featureCollection;
 		mapPanel.invalidate();
@@ -2971,15 +2731,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		//featureCollection.ecology.mapPanel = mapPanel;
 		//featureCollection.ecology.statsPanel = panelStats;
     	addEcologyListeners();
-    	
-    	System.out.println("resize ex4");
-	    try {
-	    	featureCollection.ecology.resize_population();
-			//featureCollection.loadDistrictsFromProperties("");
-	    } catch (Exception ex) {
-	    	System.out.println("resize ex3: "+ex);
-	    	ex.printStackTrace();
-	    }
 
 		
 		dlg.setVisible(false);
@@ -2987,36 +2738,17 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 		
 		geo_loaded = true;
-		System.out.println("resize_population start0 "+ (featureCollection.ecology.population == null ? "null" : featureCollection.ecology.population.size()));
-
 		setEnableds();
-		System.out.println("resize_population start1 "+ (featureCollection.ecology.population == null ? "null" : featureCollection.ecology.population.size()));
 		project.demographic_columns.clear();
 		setDemographicColumns();
-		/*
-		System.out.println("resize_population start2 "+ (featureCollection.ecology.population == null ? "null" : featureCollection.ecology.population.size()));
 		project.election_columns.clear();
 		setElectionColumns();
-		System.out.println("resize_population start3 "+ (featureCollection.ecology.population == null ? "null" : featureCollection.ecology.population.size()));
 		project.election_columns_2.clear();
 		setElectionColumns2();
-		System.out.println("resize_population start4 "+ (featureCollection.ecology.population == null ? "null" : featureCollection.ecology.population.size()));
 		project.election_columns_3.clear();
 		setElectionColumns3();
-		
-		System.out.println("resize_population start5 "+ (featureCollection.ecology.population == null ? "null" : featureCollection.ecology.population.size()));
 		project.substitute_columns.clear();
 		setSubstituteColumns();
-		*/
-		
-    	System.out.println("resize ex5");
-	    try {
-	    	featureCollection.ecology.resize_population();
-			//featureCollection.loadDistrictsFromProperties("");
-	    } catch (Exception ex) {
-	    	System.out.println("resize ex3: "+ex);
-	    	ex.printStackTrace();
-	    }
 	}
 	
 	public void openShapeFile(File f,boolean synchronous) {
@@ -3095,7 +2827,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		boolean changed = !district.equals(project.district_column);
 		project.district_column = district;
 		if( changed) {
-			VTD.compare_centroid = false;
+			Feature.compare_centroid = false;
 			Collections.sort(featureCollection.features);
 			
 			if( featureCollection.features == null || featureCollection.features.size() == 0) {
@@ -3105,11 +2837,11 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				
 				int min = 999999999;
 				int max = -1;
-				for( VTD feat : featureCollection.features) {
+				for( Feature feat : featureCollection.features) {
 					int d = 0;
 					try {
 
-						d = Integer.parseInt(feat.properties.get(district).toString() );
+						d = Integer.parseInt((String)feat.properties.get(district) );
 					} catch (Exception ex) {
 						System.out.println("ex aa "+ex);
 						d = 0;
@@ -3168,7 +2900,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 						setDistrictColumn(district);
 						hushSetDistrict = false;
 					} else {
-						int opt = JOptionPane.NO_OPTION;//JOptionPane.showConfirmDialog(this, "Uncontested elections detected.  Lock and ignore uncontested districts?", "Uncontested elections detected!", JOptionPane.YES_NO_OPTION);
+						int opt = JOptionPane.showConfirmDialog(this, "Uncontested elections detected.  Lock and ignore uncontested districts?", "Uncontested elections detected!", JOptionPane.YES_NO_OPTION);
 						if( opt == JOptionPane.YES_OPTION) {
 							Settings.ignore_uncontested = true;
 							for( Integer d : FeatureCollection.vuncontested1) {
@@ -3197,66 +2929,50 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	}
 
 	public void setPopulationColumn(String pop_col) {
-		ip.addHistory("SET POPULATION COLUMN "+pop_col);
-
 		project.population_column = pop_col;
-		for( VTD f : featureCollection.features) {
+		for( Feature f : featureCollection.features) {
 			String pop = f.properties.get(pop_col).toString();
-			pop = pop.replaceAll(",","");
-			if( pop == null || pop.length() == 0) {
-				pop = "0";
-			}
-			if( f != null) {
-				f.has_census_results = true;
-				f.population = Double.parseDouble(pop);
+			if( f.vtd != null) {
+				f.vtd.has_census_results = true;
+				f.vtd.population = Double.parseDouble(pop.replaceAll(",",""));
 			}
 			f.properties.POPULATION = (int) Double.parseDouble(pop.replaceAll(",",""));
 		}
 	}
 	public void setDemographicColumns() {
 		int num_candidates = project.demographic_columns.size();
-		StringBuffer sb = new StringBuffer("SET ETHNICITY COLUMNS");
-		for( String s : project.demographic_columns) {
-			if( s == null || s.length() == 0) {
-				continue;
-			}
-			sb.append(" "+s.trim());
-		}
-		ip.addHistory(sb.toString());
-
 		
-		for( int k = 0; k < featureCollection.features.size(); k++) {
-			VTD f = featureCollection.features.get(k);
-			f.demographics = new double[num_candidates];
+		for( Feature f : featureCollection.features) {
+			VTD v = f.vtd;
+			v.demographics = new double[num_candidates];
 			for( int i = 0; i < project.demographic_columns.size(); i++) {
 				try {
-					f.demographics[i] = Double.parseDouble(f.properties.get(project.demographic_columns.get(i)).toString().replaceAll(",",""));
+					v.demographics[i] = Double.parseDouble(f.properties.get(project.demographic_columns.get(i)).toString().replaceAll(",",""));
 				} catch (Exception ex) {
 					
-					f.demographics[i] = 0;
+					v.demographics[i] = 0;
 					f.properties.put(project.demographic_columns.get(i),"0");
 				}
 			}
 		}
 	}
 	public void setCountyColumn() {
-		ip.addHistory("SET COUNTY COLUMN "+project.county_column);
-
 		
-		for( VTD f : featureCollection.features) {
+		for( Feature f : featureCollection.features) {
+			VTD v = f.vtd;
 			try {
-				f.county = f.properties.get(project.county_column).toString();
+				v.county = f.properties.get(project.county_column).toString();
 			} catch (Exception ex) {
 			}
 		}
 	}
 	
 	public void setMuniColumn() {
-		ip.addHistory("SET MUNI COLUMN "+project.muni_column);
 		
-		for( VTD f : featureCollection.features) {
+		for( Feature f : featureCollection.features) {
+			VTD v = f.vtd;
 			try {
-				f.muni = f.properties.get(project.muni_column).toString();
+				v.muni = f.properties.get(project.muni_column).toString();
 			} catch (Exception ex) {
 			}
 		}
@@ -3264,21 +2980,15 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	
 	public void setElectionColumns() {
 		int num_candidates = project.election_columns.size();
-		StringBuffer sb = new StringBuffer("SET ELECTION COLUMNS");
-		for( String s : project.election_columns) {
-			sb.append(" "+s);
-		}
-		ip.addHistory(sb.toString());
-
 		
 		for( VTD b : featureCollection.vtds) {
 			b.resetOutcomes();
 			b.has_election_results = true;
 		}
 		
-		for( int k = 0; k < featureCollection.features.size(); k++) {
-			VTD f = featureCollection.features.get(k);
-			f.resetOutcomes();
+		for( Feature f : featureCollection.features) {
+			VTD b = f.vtd;
+			b.resetOutcomes();
 			double[] dd = new double[num_candidates];
 			for( int i = 0; i < project.election_columns.size(); i++) {
 				try {
@@ -3290,10 +3000,10 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				}
 			}
 		
-			if( f.elections.size() < 1) {
-				f.elections.add(new Vector<Election>());
+			if( b.elections.size() < 1) {
+				b.elections.add(new Vector<Election>());
 			} else {
-				f.elections.get(0).clear();
+				b.elections.get(0).clear();
 			}
 			for( int j = 0; j < num_candidates; j++) {
 				Election d = new Election();
@@ -3305,12 +3015,12 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					d.vote_prob[i] = 0;
 				}
 				d.vote_prob[j] = 1;
-				if( f.elections.size() < 1) {
-					f.elections.add(new Vector<Election>());
+				if( b.elections.size() < 1) {
+					b.elections.add(new Vector<Election>());
 				}
 
-				f.elections.get(0).add(d);
-				//System.out.println("ward "+b.id+" added demo "+j+" "+d.population);
+				b.elections.get(0).add(d);
+				System.out.println("ward "+b.id+" added demo "+j+" "+d.population);
 			}
 		}
 		
@@ -3331,8 +3041,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			b.has_election_results = true;
 		}
 		
-		for( VTD f : featureCollection.features) {
-			f.resetOutcomes();
+		for( Feature f : featureCollection.features) {
+			VTD b = f.vtd;
+			b.resetOutcomes();
 			double[] dd = new double[Settings.num_candidates];
 			for( int i = 0; i < project.election_columns_2.size(); i++) {
 				try {
@@ -3344,10 +3055,10 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				}
 			}
 		
-			while( f.elections.size() < 2) {
-				f.elections.add(new Vector<Election>());
+			while( b.elections.size() < 2) {
+				b.elections.add(new Vector<Election>());
 			}
-			f.elections.get(1).clear();
+			b.elections.get(1).clear();
 			
 			for( int j = 0; j < Settings.num_candidates; j++) {
 				Election d = new Election();
@@ -3359,12 +3070,12 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					d.vote_prob[i] = 0;
 				}
 				d.vote_prob[j] = 1;
-				while( f.elections.size() < 2) {
-					f.elections.add(new Vector<Election>());
+				while( b.elections.size() < 2) {
+					b.elections.add(new Vector<Election>());
 				}
 
-				f.elections.get(1).add(d);
-				//System.out.println("ward "+b.id+" added demo "+j+" "+d.population);
+				b.elections.get(1).add(d);
+				System.out.println("ward "+b.id+" added demo "+j+" "+d.population);
 			}
 		}
 		
@@ -3384,8 +3095,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			b.has_election_results = true;
 		}
 		
-		for( VTD f : featureCollection.features) {
-			f.resetOutcomes();
+		for( Feature f : featureCollection.features) {
+			VTD b = f.vtd;
+			b.resetOutcomes();
 			double[] dd = new double[Settings.num_candidates];
 			for( int i = 0; i < project.election_columns_3.size(); i++) {
 				try {
@@ -3397,10 +3109,10 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				}
 			}
 		
-			while( f.elections.size() < 3) {
-				f.elections.add(new Vector<Election>());
+			while( b.elections.size() < 3) {
+				b.elections.add(new Vector<Election>());
 			}
-			f.elections.get(2).clear();
+			b.elections.get(2).clear();
 			
 			for( int j = 0; j < Settings.num_candidates; j++) {
 				Election d = new Election();
@@ -3412,12 +3124,12 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					d.vote_prob[i] = 0;
 				}
 				d.vote_prob[j] = 1;
-				while( f.elections.size() < 3) {
-					f.elections.add(new Vector<Election>());
+				while( b.elections.size() < 3) {
+					b.elections.add(new Vector<Election>());
 				}
 
-				f.elections.get(2).add(d);
-				//System.out.println("ward "+b.id+" added demo "+j+" "+d.population);
+				b.elections.get(2).add(d);
+				System.out.println("ward "+b.id+" added demo "+j+" "+d.population);
 			}
 		}
 		
@@ -3429,7 +3141,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 	
 	public void setSubstituteColumns() {
-		int max = 1;//chckbxThirdElection.isSelected() ? 3 : chckbxSecondElection.isSelected() ? 2 : 1;
+		int max = chckbxThirdElection.isSelected() ? 3 : chckbxSecondElection.isSelected() ? 2 : 1;
 		boolean[][] buncontested = new boolean[][]{FeatureCollection.buncontested1, FeatureCollection.buncontested2, FeatureCollection.buncontested3};
 		Vector<String>[] dems = (Vector<String>[])new Vector[]{project.election_columns, project.election_columns_2, project.election_columns_3};
 		
@@ -3439,7 +3151,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		}
 		for( int idem = 0; idem < max; idem++) {
 			try {
-				System.out.println(" a "+featureCollection.ecology.population.size());
 				// TODO Auto-generated method stub
 				DistrictMap dm = featureCollection.ecology.population.get(0);
 				
@@ -3453,7 +3164,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				}
 				
 				for( int id = 0; id < featureCollection.features.size(); id++) {
-					VTD f = featureCollection.features.get(id);
+					Feature f = featureCollection.features.get(id);
 					if( buncontested[idem][dm.vtd_districts[id]]) {
 						continue;
 					}
@@ -3473,12 +3184,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				}
 				
 				for( int id = 0; id < featureCollection.features.size(); id++) {
-					VTD f = featureCollection.features.get(id);
+					Feature f = featureCollection.features.get(id);
+					VTD b = f.vtd;
 					if( !buncontested[idem][dm.vtd_districts[id]]) {
 						continue;
 					}
 					
-					f.resetOutcomes();
+					b.resetOutcomes();
 					double[] dd = new double[Settings.num_candidates];
 					for( int i = 0; i < project.substitute_columns.size(); i++) {
 						try {
@@ -3490,10 +3202,10 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 						}
 					}
 				
-					while( f.elections.size() <= idem) {
-						f.elections.add(new Vector<Election>());
+					while( b.elections.size() <= idem) {
+						b.elections.add(new Vector<Election>());
 					}
-					f.elections.get(idem).clear();
+					b.elections.get(idem).clear();
 					
 					for( int j = 0; j < Settings.num_candidates; j++) {
 						Election d = new Election();
@@ -3508,11 +3220,11 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 							d.vote_prob[i] = 0;
 						}
 						d.vote_prob[j] = 1;
-						if( f.elections.size() < 1) {
-							f.elections.add(new Vector<Election>());
+						if( b.elections.size() < 1) {
+							b.elections.add(new Vector<Election>());
 						}
-						f.elections.get(idem).add(d);
-						//System.out.println("ward "+b.id+" added demo "+j+" "+d.population);
+						b.elections.get(idem).add(d);
+						System.out.println("ward "+b.id+" added demo "+j+" "+d.population);
 					}
 				}
 			} catch (Exception ex) {
@@ -3526,128 +3238,118 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		setEnableds();	
 		
 	}
-	public void setMaxElections() {
-		int imax = 1;//chckbxThirdElection.isSelected() ? 3 : chckbxSecondElection.isSelected() ? 2 : 1;
-		for( VTD f : featureCollection.features) {
-			while( f.elections.size() > imax) {
-				f.elections.remove(imax-1);//.add(new Vector<Demographic>());
-			}
-			f.resetOutcomes();
-		}
-	}
-
-	public void importPopulation() {
-		ip.addHistory("IMPORT POPULATION");
 	
-		if( Download.census_merge_working) {
-			if( Download.census_merge_old) {
-				Download.nextThread = new ImportCensus2Thread(); 
-			} else {
-				Download.nextThread = new ImportGazzeterThread(); 
-				
-			}
+	public void selectLayers() {
+		boolean is_evolving = this.evolving;
+		if( is_evolving) { featureCollection.ecology.stopEvolving(); }
+		setDistrictColumn(project.district_column);
+		//featureCollection.loadDistrictsFromProperties(project.district_column);
+		DialogSelectLayers dlg = new DialogSelectLayers();
+		dlg.setData(featureCollection,project.election_columns);
+		dlg.show();
+		if( !dlg.ok) {
+			if( is_evolving) { featureCollection.ecology.startEvolving(); }
+			return;
 		}
-		Download.download_vtd = false;
-		Download.download_census = true;
-		new Download().start();
-		
-		//DialogDownload dd = new DialogDownload();
-		//dd.setTitle("Download and aggregate census data from census.gov");
-		//dd.show();
-	}
-	public void appendStuff() {
-		String fn = Download.getBasePath()+File.separator+"missing_data.txt";
-		String s = getFile(new File(fn)).toString();
-		DataAndHeader dh =  readDelimited(s,"\t", true);
-		if( dh.data.length == 0) {
-			dh.header = new String[]{"STATE","GEOID10","DISTRICT","VTDNAME","VTD CODE","LAND","WATER","POPULATION","COUNTY","PRES12_DEM","PRES12_REP"};
-		}
-		Vector<String[]> v = arrayToVector(dh.data);
-		System.out.println("starting with "+v.size()+" elements.");
-		
-		String[] source_cols = new String[]{"","GEOID10","CD_2010","VTDNAME","VTDST10","ALAND10","AWATER10","POPULATION","COUNTY_NAM","PRES12_DEM","PRES12_REP"};
-		for( VTD f : this.featureCollection.features) {
-			String pdem = f.properties.getString("PRES12_DEM").trim();
-			String prep = f.properties.getString("PRES12_REP").trim();
-			pdem = pdem == null ? "0" : pdem.equals("") ? "0" : pdem.equals("null") ? "0" : pdem;
-			prep = prep == null ? "0" : prep.equals("") ? "0" : prep.equals("null") ? "0" : prep;
-			double pd = 0, pr = 0;
-			try {
-				pd = Double.parseDouble(pdem.replaceAll(",", ""));
-				pr = Double.parseDouble(prep.replaceAll(",", ""));
-			} catch(Exception ex) { }
-			
-			if( pd <= 0 && pr <= 0 ) {
-				System.out.println("found a bad precinct");
-				String[] data = new String[source_cols.length];
-				data[0] = Download.states[Download.istate];
-				for( int i = 1; i < source_cols.length; i++) {
-					data[i] = f.properties.getString(source_cols[i]);
-				}
-				v.add(data);
-			}
-		}
-		
-		dh.data = vectorToArray(v);
-		writeDelimited(fn,dh,"\t",true);
-	}
-	public Vector<String[]> arrayToVector(String[][] sss) {
-		Vector<String[]> v = new Vector<String[]>();
-		for( String[] ss : sss) {
-			v.add(ss);
-		}
-		return v;
-	}
-	public String[][] vectorToArray(Vector<String[]> v) {
-		String[][] sss = new String[v.size()][];
-		for( int i = 0; i < sss.length; i++) {
-			sss[i] = v.get(i);
-		}
-		return sss;
-	}
-	public void writeDelimited(String filename, DataAndHeader dh, String delimiter, boolean has_headers) {
-		String[] headers = dh.header;
-		String[][] data = dh.data;
-		System.out.println("creating...");
-		File f = new File(filename);
-		FileOutputStream fos;
+
 		try {
-			fos = new FileOutputStream(f);
-			StringBuffer sb = new StringBuffer();
-			for(int i = 0; i < headers.length; i++) {
-				sb.append((i>0?delimiter:"")+headers[i]);
+			project.election_columns = dlg.in;
+			setElectionColumns();
+		} catch (Exception ex) {
+			System.out.println("ex "+ex);
+			ex.printStackTrace();
+		}
+		//mntmShowDemographics.setSelected(true);
+		//Feature.display_mode = 1;
+		mapPanel.invalidate();
+		mapPanel.repaint();
+		
+		if( is_evolving) { featureCollection.ecology.startEvolving(); }
+	}
+	public void selectLayers2() {
+		boolean is_evolving = this.evolving;
+		if( is_evolving) { featureCollection.ecology.stopEvolving(); }
+		setDistrictColumn(project.district_column);
+		//featureCollection.loadDistrictsFromProperties(project.district_column);
+		DialogSelectLayers dlg = new DialogSelectLayers();
+		dlg.setData(featureCollection,project.election_columns_2);
+		dlg.show();
+		if( !dlg.ok) {
+			if( is_evolving) { featureCollection.ecology.startEvolving(); }
+			return;
+		}
+		
+
+		try {
+			project.election_columns_2 = dlg.in;
+			if( project.election_columns_2.size() != project.election_columns.size()) {
+				JOptionPane.showMessageDialog(mainframe, "Election columns and second election columns must match one-to-one.");
+				chckbxSecondElection.doClick();//.setSelected(false);
+				//remove from demographics
+			} else {
+				//set as demographics
+				setElectionColumns2();
 			}
-			sb.append("\n");
-			
-			for(int j = 0; j < data.length; j++) {
-				for(int i = 0; i < headers.length; i++) {
-					sb.append((i>0?delimiter:"")+data[j][i]);
-				}
-				sb.append("\n");
+		} catch (Exception ex) {
+			System.out.println("ex "+ex);
+			ex.printStackTrace();
+		}
+		//mntmShowDemographics.setSelected(true);
+		//Feature.display_mode = 1;
+		mapPanel.invalidate();
+		mapPanel.repaint();
+		
+		if( is_evolving) { featureCollection.ecology.startEvolving(); }
+	}
+	public void setMaxElections() {
+		int imax = chckbxThirdElection.isSelected() ? 3 : chckbxSecondElection.isSelected() ? 2 : 1;
+		for( Feature f : featureCollection.features) {
+			VTD b = f.vtd;
+			while( b.elections.size() > imax) {
+				b.elections.remove(imax-1);//.add(new Vector<Demographic>());
 			}
-			System.out.println("writing...");
-			fos.write(sb.toString().getBytes());
-			
-			fos.flush();
-			System.out.println("closing...");
-			fos.close();		
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			b.resetOutcomes();
 		}
 	}
-	public void printss(String[] ss) {
-		System.out.print("ss("+ss.length+"): ");
-		for( String s : ss) {
-			System.out.print("["+s+"] ");
+	
+	public void selectLayers3() {
+		boolean is_evolving = this.evolving;
+		if( is_evolving) { featureCollection.ecology.stopEvolving(); }
+		setDistrictColumn(project.district_column);
+		//featureCollection.loadDistrictsFromProperties(project.district_column);
+		DialogSelectLayers dlg = new DialogSelectLayers();
+		dlg.setData(featureCollection,project.election_columns_3);
+		dlg.show();
+		if( !dlg.ok) {
+			if( is_evolving) { featureCollection.ecology.startEvolving(); }
+			return;
 		}
-		System.out.println();
+		
+
+		try {
+			project.election_columns_3 = dlg.in;
+			if( project.election_columns_3.size() != project.election_columns.size()) {
+				JOptionPane.showMessageDialog(mainframe, "Election columns and second election columns must match one-to-one.");
+				chckbxThirdElection.doClick();//.setSelected(false);
+				//remove from demographics
+			} else {
+				//set as demographics
+				setElectionColumns3();
+			}
+		} catch (Exception ex) {
+			System.out.println("ex "+ex);
+			ex.printStackTrace();
+		}
+		//mntmShowDemographics.setSelected(true);
+		//Feature.display_mode = 1;
+		mapPanel.invalidate();
+		mapPanel.repaint();
+		
+		if( is_evolving) { featureCollection.ecology.startEvolving(); }
 	}
+	
 	public DataAndHeader readDelimited(String s, String delimiter, boolean has_headers) {
 		DataAndHeader dh = new DataAndHeader();
-		if( delimiter.equals(",")) {
-			delimiter = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
-		}
 		try {
 			String[] lines = s.split("\n");
 			dh.header = lines[0].split(delimiter);
@@ -3656,48 +3358,30 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					dh.header[i] = "col_"+i;
 				}
 			}
-			for( int i = 0; i < dh.header.length; i++) {
-				dh.header[i] = dh.header[i].trim();
-				if(dh.header[i].length() > 2 && dh.header[i].charAt(0) == '"' && dh.header[i].charAt(dh.header[i].length()-2) == '"' ) {
-					dh.header[i] = dh.header[i].substring(1, dh.header[i].length()-1);
-				}
-			}
-			printss( dh.header);
 			dh.data = new String[lines.length - (has_headers ? 1 : 0)][];
 			for( int i = has_headers ? 1 : 0; i < lines.length; i++) {
-				int k = i-(has_headers ? 1 : 0); 
-				dh.data[k] = lines[i].split(delimiter);
-				for( int j = 0; j < dh.data[k].length; j++) {
-					dh.data[k][j] = dh.data[k][j].trim();
-					if(dh.data[k][j].length() > 2 && dh.data[k][j].charAt(0) == '"' && dh.data[k][j].charAt(dh.data[k][j].length()-1) == '"' ) {
-						dh.data[k][j] = dh.data[k][j].substring(1, dh.data[k][j].length()-1);
-					}
-				}
-				printss( dh.data[k]);
+				dh.data[i-(has_headers ? 1 : 0)] = lines[i].split(delimiter);
 			}
-			System.out.println();
 			return dh;
 		} catch (Exception ex) {
-			ex.printStackTrace();
+			
 		}
-		//System.exit(0);
 		return dh;
 	}
 	public void writeDBF(String filename, String[] headers, String[][] data) {
-		int MAX_HEADER_LENGTH = 10;
-        DBField[] fields = new DBField[headers.length];
+        JDBField[] fields = new JDBField[headers.length];
         System.out.println("filename: "+filename);
         
 		for( int i = 0; i < headers.length; i++) {
 			try {
 				Quadruplet<String,Integer,Integer,Byte> q = featureCollection.getHeaderData(headers[i]);
 				System.out.println("header: "+q.a+", "+q.b+", "+q.c+", "+((char)(byte)q.d));
-				fields[i] = new DBField(headers[i].length() > MAX_HEADER_LENGTH ? headers[i].substring(0,MAX_HEADER_LENGTH) : headers[i], (char)(int)q.d, q.b,q.c);
-				//fields[i] = new DBField(headers[i].length() > 10 ? headers[i].substring(0,10) : headers[i], 'C', 32, 0);
-			} catch (Exception e) {
+				fields[i] = new JDBField(headers[i].length() > 10 ? headers[i].substring(0,10) : headers[i], (char)(int)q.d, q.b,q.c);
+				//fields[i] = new JDBField(headers[i].length() > 10 ? headers[i].substring(0,10) : headers[i], 'C', 32, 0);
+			} catch (JDBFException e) {
 				try {
-					fields[i] = new DBField(headers[i].length() > MAX_HEADER_LENGTH ? headers[i].substring(0,MAX_HEADER_LENGTH) : headers[i], 'C', 32, 0);
-				} catch (Exception e1) {
+					fields[i] = new JDBField(headers[i].length() > 10 ? headers[i].substring(0,10) : headers[i], 'C', 32, 0);
+				} catch (JDBFException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
@@ -3710,7 +3394,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		DBFWriter dbfwriter;
 		try {
 			dbfwriter = new DBFWriter(filename, fields);
-		} catch (Exception e1) {
+		} catch (JDBFException e1) {
 			e1.printStackTrace();
 			return;
 		}
@@ -3722,17 +3406,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			}
 			Object[] oo = new Object[data[i].length];
 			for( int j = 0; j < fields.length; j++) {
-				if( fields[j].type == 'N') {
-					if(  data[i][j] == null || data[i][j].equals("<null>")) {
-						oo[j] = new Double(0);
-					} else {
-						try {
-							oo[j] = Double.parseDouble(data[i][j]);
-						} catch (Exception ex) {
-							ex.printStackTrace();
-							oo[j] = data[i][j];
-						}
-					}
+				if( fields[j].getType() == 'N') {
+					oo[j] = Double.parseDouble(data[i][j]);
 				} else {
 					oo[j] = data[i][j];
 				}
@@ -3741,7 +3416,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			try {
 				//dbfwriter.addRecord(data[i]);
 				dbfwriter.addRecord(oo);
-			} catch (Exception e) {
+			} catch (JDBFException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -3749,7 +3424,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		try {
 			dbfwriter.close();
 			System.out.println("dbfwriter closed");
-		} catch (Exception e) {
+		} catch (JDBFException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -3759,7 +3434,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		DBFReader dbfreader;
 		try {
 			dbfreader = new DBFReader(dbfname);
-		} catch (Exception e1) {
+		} catch (JDBFException e1) {
 			e1.printStackTrace();
 			return null;
 		}
@@ -3768,7 +3443,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		dh.header = new String[dbfreader.getFieldCount()];
 		for( int i = 0; i < dh.header.length; i++) {
 			try {
-				dh.header[i] = dbfreader.getField(i).name;
+				dh.header[i] = dbfreader.getField(i).getName();
 				System.out.println("i: "+dh.header[i]);
 			} catch (Exception ex) {
 				ex.printStackTrace();
@@ -3811,7 +3486,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			DBFReader dbfreader = new DBFReader(dbfname);
 			String[] cols = new String[dbfreader.getFieldCount()];
 			for( int i=0; i<cols.length; i++) {
-				cols[i] = dbfreader.getField(i).name;
+				cols[i] = dbfreader.getField(i).getName();
 				System.out.print(cols[i]+"  ");
 			}
 			System.out.print("\n");
@@ -3824,17 +3499,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		    int total = 0;
 		    AbstractShape s;
 		    while ((s = r.next()) != null) {
-		    	Object aobj[] = new Object[cols.length];
-		    	try {
-		    		aobj = dbfreader.nextRecord(Charset.defaultCharset());
-		    	} catch (Exception ex) {
-		    		System.out.println("aobj ex "+ex);
-		    		ex.printStackTrace();
-		    		for( int i = 0; i < aobj.length; i++) {
-		    			aobj[i] = "";
-		    		}
-		    		
-		    	}
+		    	Object aobj[] = dbfreader.nextRecord(Charset.defaultCharset());
 		      switch (s.getShapeType()) {
 		      case POLYGON_Z:
 			      {
@@ -3842,7 +3507,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			    	  //System.out.println("record number: "+rec_num);
 			          PolygonZShape aPolygon = (PolygonZShape) s;
 			          
-			          VTD feature = new VTD();
+			          Feature feature = new Feature();
 			          featureCollection.features.add(feature);
 			          feature.properties = new Properties();
 			          feature.geometry = new Geometry();
@@ -3874,7 +3539,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			    	  //System.out.println("record number: "+rec_num);
 			          PolygonShape aPolygon = (PolygonShape) s;
 			          
-			          VTD feature = new VTD();
+			          Feature feature = new Feature();
 			          featureCollection.features.add(feature);
 			          feature.properties = new Properties();
 			          feature.geometry = new Geometry();
@@ -3906,7 +3571,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		      total++;
 		    }
 			for( int i=0; i<cols.length; i++) {
-				cols[i] = dbfreader.getField(i).name;
+				cols[i] = dbfreader.getField(i).getName();
 				System.out.print(cols[i]+"  ");
 			}
 			System.out.print("\n");
@@ -4004,7 +3669,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 						b.elections.add(new Vector<Election>());
 					}
 					b.elections.get(0).add(d);
-					//System.out.println("ward "+b.id+" added demo "+d.population+" "+j);
+					System.out.println("ward "+b.id+" added demo "+d.population+" "+j);
 				}
 			}
 			Settings.num_candidates = num_candidates;
@@ -4013,16 +3678,67 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			System.out.println("ex "+ex);
 			ex.printStackTrace();
 		}
-		VTD.display_mode = 1;
+		Feature.display_mode = 1;
 		mapPanel.invalidate();
 		mapPanel.repaint();
 		election_loaded = true;
 		setEnableds();
 	}
 	
+	public void initFeatures() {
+		Vector<Feature> features = featureCollection.features;
+		System.out.println(features.size()+" precincts loaded.");
+		System.out.println("Getting min/max...");
+	    getMinMaxXY();
+		System.out.println("Initializing wards...");
+		featureCollection.initwards();
+		Settings.resetAnnealing();
+		featureCollection.ecology.generation = 0;
+/*
+		minx = features.get(0).geometry.coordinates[0][0][0];
+		maxx = features.get(0).geometry.coordinates[0][0][0];
+		miny = features.get(0).geometry.coordinates[0][0][1];
+		maxy = features.get(0).geometry.coordinates[0][0][1];
+		HashSet<String> types = new HashSet<String>();
+		for( Feature f : features) {
+			double[][][] coordinates2 = f.geometry.coordinates;
+			for( int j = 0; j < coordinates2.length; j++) {
+				double[][] coordinates = coordinates2[j];
+				for( int i = 0; i < coordinates.length; i++) {
+					if( coordinates[i][0] < minx) {
+						minx = coordinates[i][0];
+					}
+					if( coordinates[i][0] > maxx) {
+						maxx = coordinates[i][0];
+					}
+					if( coordinates[i][1] < miny) {
+						miny = coordinates[i][1];
+					}
+					if( coordinates[i][1] > maxy) {
+						maxy = coordinates[i][1];
+					}
+				}
+			}					
+		}
+		System.out.println(""+minx+","+miny);
+		System.out.println(""+maxx+","+maxy);
+		*/
+		resetZoom();
+		mapPanel.featureCollection = featureCollection;
+		mapPanel.invalidate();
+		mapPanel.repaint();
+		//featureCollection.ecology.mapPanel = mapPanel;
+		//featureCollection.ecology.statsPanel = panelStats;
+		featureCollection.initEcology();
+    	addEcologyListeners();
+
+		System.out.println("Ready.");
+		
+		geo_loaded = true;
+		setEnableds();
+	}
+	
 	public MainFrame() {
-		mainframe = this;
-		ip.mainFrame = this;
 
 		String className = getLookAndFeelClassName("Nimbus");
 		try {
@@ -4032,14 +3748,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			e1.printStackTrace();
 		} 
 
+		mainframe = this;
 		jbInit();
-		/*
-		chckbxmntmOutlineState.setSelected(true);
-		Feature.outline_state = chckbxmntmOutlineState.isSelected();
-		MapPanel.FSAA = Feature.outline_vtds ? 4 : 1;
+		chckbxmntmHideMapLines.setSelected(true);
+		Feature.draw_lines = chckbxmntmHideMapLines.isSelected();
+		MapPanel.FSAA = Feature.draw_lines ? 4 : 1;
 		mapPanel.invalidate();
 		mapPanel.repaint();
-		*/
 		
 		try {
 			UIManager.setLookAndFeel(className);
@@ -4061,7 +3776,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		sliderVoteDilution.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
 				Settings.vote_dilution_weight = sliderVoteDilution.getValue()/100.0;
-				ip.addHistory("SET WEIGHT RACIAL "+Settings.vote_dilution_weight);
 			}
 		});
 		sliderVoteDilution.setValue(50);
@@ -4075,30 +3789,11 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			public void actionPerformed(ActionEvent e) {
 				Settings.mutate_competitive = chckbxConstrain_1.isSelected();
 				Settings.mutate_good = chckbxConstrain.isSelected() && chckbxConstrain_1.isSelected();
-				ip.addHistory("SET CONSTRAIN COMPETITION  "+(chckbxConstrain_1.isSelected() ? "TRUE" : "FALSE"));
 			}
 		});
 		chckbxConstrain_1.setFont(new Font("Tahoma", Font.PLAIN, 9));
 		chckbxConstrain_1.setBounds(133, 37, 61, 23);
 		panel_4.add(chckbxConstrain_1);
-		
-		lblDescriptiveRepr = new JLabel("Descriptive representation");
-		lblDescriptiveRepr.setToolTipText("<html><img src=\"file:/C:/Users/kbaas.000/git/autoredistrict/bin/resources/voting_power.png\">");
-		lblDescriptiveRepr.setFont(new Font("Tahoma", Font.PLAIN, 10));
-		lblDescriptiveRepr.setBounds(10, 265, 172, 16);
-		panel_4.add(lblDescriptiveRepr);
-		
-		slider = new JSlider();
-		slider.addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent e) {
-				Settings.descr_rep_weight = slider.getValue()/100.0;
-				ip.addHistory("SET WEIGHT DESCRIPTIVE "+Settings.descr_rep_weight);
-
-			}
-		});
-		slider.setValue(0);
-		slider.setBounds(10, 285, 180, 29);
-		panel_4.add(slider);
 		
 		Settings.mutation_rate = 0; 
 		Settings.mutation_boundary_rate = boundary_mutation_rate_multiplier*Math.exp(-(100-slider_mutation.getValue())/Settings.exp_mutate_factor);
@@ -4109,10 +3804,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		Settings.diagonalization_weight = sliderRepresentation.getValue()/100.0;
 		Settings.population_balance_weight = sliderPopulationBalance.getValue()/100.0;
 		Settings.geometry_weight = sliderBorderLength.getValue()/100.0;
-		Settings.disconnected_population_weight = 2*sliderDisconnected.getValue()/100.0;
+		Settings.disconnected_population_weight = sliderDisconnected.getValue()/100.0;
 		Settings.split_reduction_weight = sliderSplitReduction.getValue()/100.0;
 		Settings.vote_dilution_weight = sliderVoteDilution.getValue()/100.0;
-		Settings.descr_rep_weight = slider.getValue()/100.0;
 		Settings.mutate_all = true;
 		
 		Settings.mutation_rateChangeListeners.add(this);
@@ -4136,7 +3830,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		setTitle("Automatic Redistricter");
 		Dimension d = new Dimension(800,1024);
 		//this.setPreferredSize(d);
-		this.setSize(new Dimension(1021+100, 779));
+		this.setSize(new Dimension(1021, 779));
 		
 		sliderWastedVotesTotal = new JSlider();
 		lblWastedVotes = new JLabel("Competitive");
@@ -4150,6 +3844,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		sliderVoteDilution = new JSlider();
 		textFieldTotalSeats = new JTextField();
 		lblTotalSeats = new JRadioButton("Total seats");
+		chckbxNewCheckBox = new JCheckBox("No 4 seat districts");
 		srlblMuniColumn = new JLabel("Muni column");
 		srcomboBoxMuniColumn = new JComboBox();
 		rdbtnReduceTotalSplits = new JRadioButton("Reduce total splits");
@@ -4163,7 +3858,11 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		rdbtnMinimizeMeanDev = new JRadioButton("Minimize absolute dev.");
 		mntmWizard = new JMenuItem("Download vtd shapefile & population from census.gov...");
 		separator_7 = new JSeparator();
+		mntmDescramble = new JMenuItem("descramble");
+		mntmShowSeats = new JMenuItem("Show seats / votes");
 		mnWindows = new JMenu("Windows");
+		btnElection2Columns = new JButton("Election 2 columns");
+		chckbxSecondElection = new JCheckBox("Second election");
 		
 		
 		//========CONTAINERS
@@ -4179,8 +3878,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 		//===========COMPONENTS - MENU ITEMS
 		selectionType = new ButtonGroup();
-		mntmShowVoteBalance = new JRadioButtonMenuItem("Color by vote balance");;
-		mntmShowDemographics = new JRadioButtonMenuItem("Color by demographic");;
+		mntmShowVoteBalance = new JMenuItem("Color by vote balance");;
+		mntmShowDemographics = new JMenuItem("Color by demographic");;
 		chckbxmntmShowPrecinctLabels = new JCheckBoxMenuItem("Show precinct labels");
 		chckbxmntmHideMapLines = new JCheckBoxMenuItem("Show map lines");
 		chckbxmntmFlipVertical = new JCheckBoxMenuItem("Flip vertical");
@@ -4217,13 +3916,17 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		comboBoxPopulation = new JComboBox();
 		comboBoxDistrictColumn = new JComboBox();
 	    textFieldNumDistricts = new JTextField();
+	    textField = new JTextField();
 
 		manageLocks = new DialogManageLocks();
 		seatsPanel = new PanelSeats();
-		featuresPanel = new PanelFeatures();
 		progressBar = new JProgressBar();
-		frameSeatsVotesChart = new FrameSeatsVotesChart();;;
+		frameSeatsVotesChart = new FrameSeatsVotesChart();
+
+		mntmShowVoteBalance = new JMenuItem("Color by vtd vote");;
+		mntmShowDemographics = new JMenuItem("Color by vtd demographic");;
 		chckbxmntmShowPrecinctLabels = new JCheckBoxMenuItem("Show precinct labels");
+		chckbxmntmHideMapLines = new JCheckBoxMenuItem("Show map lines");
 		chckbxmntmFlipVertical = new JCheckBoxMenuItem("Flip vertical");
 		chckbxmntmFlipHorizontal = new JCheckBoxMenuItem("Flip horizontal");
 		chckbxmntmShowDistrictLabels = new JCheckBoxMenuItem("Show district labels");
@@ -4237,7 +3940,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		//mnDemographics = new JMenu("Demographics");
 		chckbxmntmOpenCensusResults = new JMenuItem("Open Census results");
 		mntmOpenElectionResults = new JMenuItem("Open Election results");
-		mnHelp_1 = new JMenu("Help");
+		mnHelp = new JMenu("Help");
 		mntmWebsite = new JMenuItem("Website");
 		mntmSourceCode = new JMenuItem("Source code");
 		mntmLicense = new JMenuItem("License");
@@ -4245,6 +3948,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		mntmImportcsv = new JMenuItem("Import results .csv");
 		mntmShowStats = new JMenuItem("Show stats");
 		mntmShowData = new JMenuItem("Show data");
+		
+		mnImportExport_1 = new JMenu("Aggregate/Deaggregate");
 
 		mntmExportPopulation = new JMenuItem("Export population");
 		mntmImportPopulation = new JMenuItem("Import population");
@@ -4252,13 +3957,15 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		mntmZoomIn = new JMenuItem("Zoom in");
 		mntmUndoZoom = new JMenuItem("Undo zoom");
 		mntmShowGraph = new JMenuItem("Show graph");
+		mntmOpenEsriShapefile = new JMenuItem("Open ESRI shapefile");
 		comboBoxPopulation = new JComboBox();
 		comboBoxDistrictColumn = new JComboBox();
 	    textFieldNumDistricts = new JTextField();
-	    evolutionPopulationTF = new JTextField();
+	    textField = new JTextField();
 
 
 		separator_1 = new JSeparator();
+		mntmImportAggregate = new JMenuItem("Import & aggregate custom");
 		mntmOpenWktTabdelimited = new JMenuItem("Open WKT tab-delimited");
 
 	    dlg = new JDialog(mainframe, "Working", true);
@@ -4266,7 +3973,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 		
 		slider_mutation = new JSlider();
-		slider_mutation.setValue(100);
 		sliderDisconnected = new JSlider();
 		sliderBorderLength = new JSlider();
 		sliderPopulationBalance = new JSlider();
@@ -4292,114 +3998,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			}
 		});
 		menuBar.add(mnFile);
-		
-		mnMerge = new JMenu("Merge");
-		menuBar.add(mnMerge);
-		
-		mntmCountyVote = new JMenuItem("2010 county vote and ethnic data");
-		mntmCountyVote.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				importCountyData();
-
-			}
-		});
-		mnMerge.add(mntmCountyVote);
-		
-		separator_13 = new JSeparator();
-		mnMerge.add(separator_13);
-		
-		mntmVtdVote = new JMenuItem("2010 vtd vote estimates");
-		mntmVtdVote.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				importBlockElection();
-			}
-		});
-		mnMerge.add(mntmVtdVote);
-		
-		separator_12 = new JSeparator();
-		mnMerge.add(separator_12);
-		
-		mntmBlocklevelPopulation = new JMenuItem("Block-level population");
-		mntmBlocklevelPopulation.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				importPopulation();
-			}
-		});
-		/*
-		mntmBlocklevelPopulation.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				ip.addHistory("IMPORT POPULATION");
-
-				if( Download.census_merge_working) {
-					if( Download.census_merge_old) {
-						Download.nextThread = new ImportCensus2Thread(); 
-					} else {
-						Download.nextThread = new ImportGazzeterThread(); 
-						
-					}
-				}
-				//Download.nextThread = ost;
-				DialogDownload dd = new DialogDownload();
-				dd.setTitle("Download and aggregate census data from census.gov");
-				dd.show();
-			}
-		});
-		*/
-		mnMerge.add(mntmBlocklevelPopulation);
-		
-		mntmBlocklevelEthnicData = new JMenuItem("Block-level ethnic data");
-		mnMerge.add(mntmBlocklevelEthnicData);
-		mntmBlocklevelEthnicData.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				importBlockDemographics();
-			}
-		});
-
-		
-		mntmBlocklevelCurrentDistricts = new JMenuItem("Block-level CY2000 districts");
-		mntmBlocklevelCurrentDistricts.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				importBlockCurrentDistricts();
-			}
-		});
-		mnMerge.add(mntmBlocklevelCurrentDistricts);
-		
-		
-		mntmBlocklevelBdistricting = new JMenuItem("Block-level bdistricting");
-		mntmBlocklevelBdistricting.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				importBlockBdistricting();
-			}
-		});
-		mnMerge.add(mntmBlocklevelBdistricting);
-		
-		mntmImportBlockFile = new JMenuItem("Import block file");
-		mntmImportBlockFile.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				new ImportAggregateCustom().init();
-			}
-		});
-		mnMerge.add(mntmImportBlockFile);
-		
-		separator_14 = new JSeparator();
-		mnMerge.add(separator_14);
-		mntmExportAndDeaggregate = new JMenuItem("Export & de-aggregate custom");
-		mnMerge.add(mntmExportAndDeaggregate);
-		mntmExportAndDeaggregate.addActionListener(new ActionListener() {
-			
-			public void actionPerformed(ActionEvent e) {
-				/*
-				JFileChooser jfc = new JFileChooser();
-				FileNameExtensionFilter filter = new FileNameExtensionFilter("Dbase file", "dbf");
-				jfc.setFileFilter(filter);
-				jfc.showOpenDialog(null);
-				File fd = jfc.getSelectedFile();
-				if( fd == null) {
-					return;
-				}*/
-				new ExportCustomThread().init();
-			}				
-		});
+		menuBar.add(mnImportExport_1);
 		
 		JMenuItem mntmOpenProjectFile = new JMenuItem("Open project file");
 		mntmOpenProjectFile.addActionListener(new ActionListener() {
@@ -4464,63 +4063,31 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		JSeparator separator = new JSeparator();
 		mntmWizard.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				Download.initPaths();
-				OpenShapeFileThread ost = new OpenShapeFileThread(null);
+				OpenShapeFileThread ost = new OpenShapeFileThread(Download.vtd_file);
 				ImportCensus2Thread ir = new ImportCensus2Thread();
-				MergeInDemoAndElection it = new MergeInDemoAndElection();
-				//it.nextThread = new ImportCountyLevel();
+				ImportTranslations it = new ImportTranslations();
+				it.nextThread = new ImportCountyLevel();
 				ir.nextThread =  it;
 				ost.nextThread = ir;
+				//if( Download.census_merge_working) {
+					//if( Download.census_merge_old) {
+					//} else {
+					//	ost.nextThread = new ImportGazzeterThread(); 
+					//}
+				//}
 				Download.nextThread = ost;
-				Download.prompt = true;
 				DialogDownload dd = new DialogDownload();
 				dd.show();
-				System.out.println("dd hidden "+dd.ok+" "+dd.all);
-				if( dd.ok && dd.all) {
-					System.out.println("download all");
-					//JOptionPane.showMessageDialog(null,"hi");
-
-					Download.prompt = false;
-					Download.downloadAll = true;
-					
-					Download.istate = 0;
-					Download.cyear = Integer.parseInt((String)dd.comboBoxCensusYear.getSelectedItem());
-					Download.vyear = Integer.parseInt((String)dd.comboBoxElectionYear.getSelectedItem());
-					downloadNextState();
-					/*
-					CycleThread ct = new CycleThread();
-					ct.cyear = Integer.parseInt((String)dd.comboBoxCensusYear.getSelectedItem());
-					ct.eyear = Integer.parseInt((String)dd.comboBoxElectionYear.getSelectedItem());
-					ct.state = 1;
-					ct.start();
-					*/
-				}
 				//!Download.downloadData(dlg, dlbl))
 			}
 		});
-
+		
 		mnFile.add(mntmWizard);
 
-		
-		mntmMergeInElection = new JMenuItem("Merge in election data and demographics");
-		mntmMergeInElection.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				mergeInDemoAndElection();
-			}
-		});
-		//mnFile.add(mntmMergeInElection);
-
-		mntmPublicMappingProject = new JMenuItem("Public Mapping Project data...");
-		mntmPublicMappingProject.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e)
-			{
-				/*Applet.browseTo("http://www.publicmapping.org/resources/data");*/
-			}
-		});
-		mnFile.add(mntmPublicMappingProject);
-		
 		mnFile.add(separator_7);
-		mntmOpenEsriShapefile = new JMenuItem("Open ESRI shapefile");
+		//mnFile.add(separator);
+		
+		mnFile.add(mntmOpenGeojson);
 		mntmOpenEsriShapefile.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				JFileChooser jfc = new JFileChooser();
@@ -4538,9 +4105,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		});
 		
 		mnFile.add(mntmOpenEsriShapefile);
-		//mnFile.add(separator);
 		
-		mnFile.add(mntmOpenGeojson);
+		mntmImportCensusData = new JMenuItem("Import Census Data from file");
+		mntmImportCensusData.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				new LoadCensusFileThread().init();
+			}
+		});
 		mntmOpenWktTabdelimited.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				new OpenWKTFileThread().start();
@@ -4550,6 +4121,81 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		mnFile.add(mntmOpenWktTabdelimited);
 		
 		mnFile.add(separator_1);
+		mnImportExport_1.add(mntmImportCensusData);
+		
+		mntmExportToBlock = new JMenuItem("Export districts to block level");
+		mntmExportToBlock.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				boolean ok = true;
+				if( comboBoxDistrictColumn.getSelectedIndex() < 0 ) {
+					ok = false;
+				}
+				if( ok && comboBoxDistrictColumn.getSelectedItem() == null) {
+					ok = false;
+				}
+				if( ok && ((String)comboBoxDistrictColumn.getSelectedItem()).length() == 0) {
+					ok = false;
+				}
+				if( ok) {
+					new ExportToBlockLevelThread().start();
+				} else {
+					JOptionPane.showMessageDialog(MainFrame.mainframe,"You must select a district column first.");
+				}
+			}
+		});
+		mntmImportAggregate.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				new ImportAggregateCustom().init();
+			}
+		});
+		
+		mntmImportCensusData_1 = new JMenuItem("Import Census Data from census.gov");
+		mntmImportCensusData_1.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				//OpenShapeFileThread ost = new OpenShapeFileThread(Download.vtd_file);
+				if( Download.census_merge_working) {
+					if( Download.census_merge_old) {
+						Download.nextThread = new ImportCensus2Thread(); 
+					} else {
+						Download.nextThread = new ImportGazzeterThread(); 
+						
+					}
+				}
+				//Download.nextThread = ost;
+				DialogDownload dd = new DialogDownload();
+				dd.setTitle("Download and aggregate census data from census.gov");
+				dd.show();
+			}
+		});
+		mnImportExport_1.add(mntmImportCensusData_1);
+		separator_2 = new JSeparator();
+		
+		mnImportExport_1.add(separator_2);
+		
+		mnImportExport_1.add(mntmImportAggregate);
+		mntmExportAndDeaggregate = new JMenuItem("Export & de-aggregate custom");
+		mntmExportAndDeaggregate.addActionListener(new ActionListener() {
+			
+			public void actionPerformed(ActionEvent e) {
+				/*
+				JFileChooser jfc = new JFileChooser();
+				FileNameExtensionFilter filter = new FileNameExtensionFilter("Dbase file", "dbf");
+				jfc.setFileFilter(filter);
+				jfc.showOpenDialog(null);
+				File fd = jfc.getSelectedFile();
+				if( fd == null) {
+					return;
+				}*/
+				new ExportCustomThread().init();
+			}				
+		});
+		
+		mnImportExport_1.add(mntmExportAndDeaggregate);
+		
+		separator_10 = new JSeparator();
+		mnImportExport_1.add(separator_10);
+		mnImportExport_1.add(mntmExportToBlock);
+		mnImportExport_1.add(new JSeparator());
 
 
 		
@@ -4645,6 +4291,37 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		
 		separator_4 = new JSeparator();
 		mnFile.add(separator_4);
+		
+		mntmConvertWktTo = new JMenuItem("Convert WKT to lat/lon");
+		mntmConvertWktTo.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				new WKTFileToCoordsThread().init();
+			}
+		});
+		mnImportExport_1.add(mntmConvertWktTo);
+		mntmDescramble.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				for( Feature feat : featureCollection.features) {
+					feat.geometry.makePolysFull();
+				}
+
+				String[] districts = new String[featureCollection.features.size()];
+				Feature.compare_centroid = true;
+				String s = (String)mainframe.comboBoxDistrictColumn.getSelectedItem();
+				Collections.sort(featureCollection.features);
+				for( int i = 0; i < featureCollection.features.size(); i++) {
+					districts[i] = featureCollection.features.get(i).properties.getString(s);
+				}
+				Feature.compare_centroid = false;
+				Collections.sort(featureCollection.features);
+				for( int i = 0; i < featureCollection.features.size(); i++) {
+					featureCollection.features.get(i).properties.put(s,districts[i]);
+				}
+				System.out.println("done descrambling");
+			}
+		});
+		
+		mnImportExport_1.add(mntmDescramble);
 
 		
 		JMenuItem mntmExit = new JMenuItem("Exit");
@@ -4653,63 +4330,63 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				System.exit(0);
 			}
 		});
-		//add at ened of jmenu (move code in panelstats to function)
-		mntmExportToHtml = new JMenuItem("Export to html");
-		mntmExportToHtml.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				panelStats.exportToHtml(true);
-			}
-		});
-		mnFile.add(mntmExportToHtml);
+		mnFile.add(mntmExit);
 		
+		JMenuItem mntmWisconsin = new JMenuItem("Wisconsin 2012");
+		mntmWisconsin.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				StringBuffer sb = new StringBuffer();
+				InputStream in = getClass().getResourceAsStream("/resources/Wards_111312_ED_110612.json"); 
+				//System.exit(0);
+				//BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+				try {
+					while( in.available() > 0) {
+						byte[] bb = new byte[in.available()];
+						in.read(bb);
+						sb.append(new String(bb));
+						Thread.sleep(load_wait);
+					}
+				} catch (Exception e) {
+					// TODO Auto-generated catch ward
+					e.printStackTrace();
+				}
+				
+				FeatureCollection fc = new FeatureCollection();
+				if( panelStats != null) {
+					panelStats.featureCollection = featureCollection;
+				}
 
-		
-		mntmExportBlockFile = new JMenuItem("Export block file");
-		mntmExportBlockFile.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				ip.addHistory("EXPORT BLOCKS");
-				boolean ok = true;
-				if( comboBoxDistrictColumn.getSelectedIndex() < 0 ) {
-					ok = false;
+				try {
+					fc.fromJSON(sb.toString());
+				} catch (Exception ex) {
+					System.out.println("ex "+ex);
+					ex.printStackTrace();
 				}
-				if( ok && comboBoxDistrictColumn.getSelectedItem() == null) {
-					ok = false;
+				for( Feature fe : fc.features) {
+						featureCollection.features.add(fe);
 				}
-				if( ok && ((String)comboBoxDistrictColumn.getSelectedItem()).length() == 0) {
-					ok = false;
-				}
-				if( ok) {
-					ExportCustomThread exp = new ExportCustomThread();
-					exp.init();
-					//new ExportToBlockLevelThread().start();
-				} else {
-					JOptionPane.showMessageDialog(MainFrame.mainframe,"You must select a district column first.");
-				}
-			}
-		});
-		
-		mntmExportNationalMaps = new JMenuItem("Export national maps");
-		mntmExportNationalMaps.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				panelStats.exportTransparent();
-			}
-		});
-		mnFile.add(mntmExportNationalMaps);
-		
-		mntmExportPieCharts = new JMenuItem("Export pie charts");
-		mntmExportPieCharts.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				panelStats.exportPieCharts();
-			}
-		});
-		mnFile.add(mntmExportPieCharts);
-		mnFile.add(mntmExportBlockFile);
-		
-		separator_10 = new JSeparator();
-		mnFile.add(separator_10);
+				initFeatures();
 
+				sb = new StringBuffer();
+				in = getClass().getResourceAsStream("/resources/combined_results.txt"); 
+				//System.exit(0);
+				//BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+				try {
+					while( in.available() > 0) {
+						byte[] bb = new byte[in.available()];
+						in.read(bb);
+						sb.append(new String(bb));
+						Thread.sleep(load_wait);
+					}
+				} catch (Exception e) {
+					// TODO Auto-generated catch ward
+					e.printStackTrace();
+				}
+				loadElection(sb.toString());
+
+			}
+		});
 		
-		mnFile.add(mntmExit);		
 		
 		mntmOpenGeojson.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
@@ -4791,7 +4468,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					System.out.println("ex "+ex);
 					ex.printStackTrace();
 				}
-				VTD.display_mode = 2;
+				Feature.display_mode = 2;
 				mapPanel.invalidate();
 				mapPanel.repaint();
 			}
@@ -4857,7 +4534,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		
 		chckbxmntmShowPrecinctLabels.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				VTD.showPrecinctLabels = chckbxmntmShowPrecinctLabels.isSelected();
+				Feature.showPrecinctLabels = chckbxmntmShowPrecinctLabels.isSelected();
 				mapPanel.invalidate();
 				mapPanel.repaint();
 			}
@@ -4867,13 +4544,23 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		//mnView.add(chckbxmntmShowPrecinctLabels);
 		chckbxmntmShowDistrictLabels.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				VTD.showDistrictLabels = chckbxmntmShowDistrictLabels.isSelected();
+				Feature.showDistrictLabels = chckbxmntmShowDistrictLabels.isSelected();
 				mapPanel.invalidate();
 				mapPanel.repaint();
 				//JOptionPane.showMessageDialog(null,"Not implemented");
 			}
 		});
 		mnView.add(chckbxmntmShowDistrictLabels);
+		chckbxmntmHideMapLines.setSelected(Feature.draw_lines );
+		chckbxmntmHideMapLines.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				Feature.draw_lines = chckbxmntmHideMapLines.isSelected();
+				MapPanel.FSAA = Feature.draw_lines ? 4 : 1;
+				mapPanel.invalidate();
+				mapPanel.repaint();
+			}
+		});
+		mnView.add(chckbxmntmHideMapLines);
 		
 		chckbxmntmSimplifyPolygons = new JCheckBoxMenuItem("Simplify polygons");
 		chckbxmntmSimplifyPolygons.addActionListener(new ActionListener() {
@@ -4885,290 +4572,86 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		});
 		chckbxmntmSimplifyPolygons.setToolTipText("This makes the map draw considerably faster by reducing the number of lines in each polygon.");
 		mnView.add(chckbxmntmSimplifyPolygons);
-		chckbxmntmHideMapLines = new JCheckBoxMenuItem("Outline vtd's");
-		chckbxmntmHideMapLines.setSelected(VTD.outline_vtds );
-		chckbxmntmHideMapLines.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				VTD.outline_vtds = chckbxmntmHideMapLines.isSelected();
-				MapPanel.FSAA = VTD.isOutlineActive() ? 4 : 1;
-				mapPanel.invalidate();
-				mapPanel.repaint();
-			}
-		});
-		
-		chckbxmntmFitToNation = new JCheckBoxMenuItem("Fit to nation");
-		chckbxmntmFitToNation.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				Settings.setNationalMap(chckbxmntmFitToNation.isSelected());
-
-			}
-		});
-		mnView.add(chckbxmntmFitToNation);
-		
-		separator_15 = new JSeparator();
-		mnView.add(separator_15);
-		mnView.add(chckbxmntmHideMapLines);
-		
-		chckbxmntmOutlineState = new JCheckBoxMenuItem("Outline state");
-		chckbxmntmOutlineState.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				VTD.outline_state = chckbxmntmOutlineState.isSelected();
-				MapPanel.FSAA = VTD.isOutlineActive() ? 4 : 1;
-				mapPanel.invalidate();
-				mapPanel.repaint();
-
-			}
-		});
-		mnView.add(chckbxmntmOutlineState);
-		
-		mntmOutlineDistricts = new JCheckBoxMenuItem("Outline districts");
-		mntmOutlineDistricts.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					VTD.outline_districts = mntmOutlineDistricts.isSelected();
-					MapPanel.FSAA = VTD.isOutlineActive() ? 4 : 1;
-					mapPanel.invalidate();
-					mapPanel.repaint();
-				} catch (Exception ex) {
-					System.out.println("ex "+ex);
-					ex.printStackTrace();
-				}
-			}
-		});
-		mnView.add(mntmOutlineDistricts);
-		
-		mntmOutlineCounties = new JCheckBoxMenuItem("Outline counties");
-		mntmOutlineCounties.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					VTD.outline_counties = mntmOutlineCounties.isSelected();
-					MapPanel.FSAA = VTD.isOutlineActive() ? 4 : 1;
-					mapPanel.invalidate();
-					mapPanel.repaint();
-				} catch (Exception ex) {
-					System.out.println("ex "+ex);
-					ex.printStackTrace();
-				}
-
-
-			}
-		});
-		mnView.add(mntmOutlineCounties);
-		
-		separator_16 = new JSeparator();
-		mnView.add(separator_16);
-		
-		chckbxmntmDividePackingBy = new JCheckBoxMenuItem("Divide by population density");
-		chckbxmntmDividePackingBy.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				Settings.divide_packing_by_area = chckbxmntmDividePackingBy.isSelected();
-				mapPanel.invalidate();
-				mapPanel.repaint();
-			}
-		});
-		chckbxmntmDividePackingBy.setSelected(true);
-		mnView.add(chckbxmntmDividePackingBy);
 		
 		
 		separator_6 = new JSeparator();
 		mnView.add(separator_6);
 		
-		mntmColorByDistrict = new JRadioButtonMenuItem("Color by district");
+		mntmColorByDistrict = new JMenuItem("Color by district");
 		mntmColorByDistrict.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				VTD.display_mode = VTD.DISPLAY_MODE_NORMAL;
+				Feature.display_mode = Feature.DISPLAY_MODE_NORMAL;
 				mapPanel.invalidate();
 				mapPanel.repaint();
 			}
 		});
 		mnView.add(mntmColorByDistrict);
 		
-		mntmColorByPop = new JRadioButtonMenuItem("Color by district pop imbalance");
+		mntmColorByPop = new JMenuItem("Color by district pop imbalance");
 		mntmColorByPop.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				VTD.display_mode = VTD.DISPLAY_MODE_DIST_POP;
+				Feature.display_mode = Feature.DISPLAY_MODE_DIST_POP;
 				mapPanel.invalidate();
 				mapPanel.repaint();
 			}
 		});
 		mnView.add(mntmColorByPop);
 		
-		mntmColorByVote = new JRadioButtonMenuItem("Color by district vote");
+		mntmColorByVote = new JMenuItem("Color by district vote");
 		mntmColorByVote.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				VTD.display_mode = VTD.DISPLAY_MODE_DIST_VOTE;
+				Feature.display_mode = Feature.DISPLAY_MODE_DIST_VOTE;
 				mapPanel.invalidate();
 				mapPanel.repaint();
 			}
 		});
 		
 		
-		mntmColorByCompactness = new JRadioButtonMenuItem("Color by district compactness");
+		mntmColorByCompactness = new JMenuItem("Color by district compactness");
 		mntmColorByCompactness.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				VTD.display_mode = VTD.DISPLAY_MODE_COMPACTNESS;
+				Feature.display_mode = Feature.DISPLAY_MODE_COMPACTNESS;
 				mapPanel.invalidate();
 				mapPanel.repaint();
 			}
 		});
 		mnView.add(mntmColorByCompactness);
 		
-		mntmColorByWasted = new JRadioButtonMenuItem("Color by district wasted votes");
+		mntmColorByWasted = new JMenuItem("Color by district wasted votes");
 		mntmColorByWasted.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				VTD.display_mode = VTD.DISPLAY_MODE_WASTED_VOTES;
+				Feature.display_mode = Feature.DISPLAY_MODE_WASTED_VOTES;
 				mapPanel.invalidate();
 				mapPanel.repaint();
 			}
 		});
 		
 		mnView.add(mntmColorByWasted);
-		
-		mntmColorByCounty = new JRadioButtonMenuItem("Color by county");
-		mntmColorByCounty.setEnabled(false);
-		mntmColorByCounty.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				VTD.display_mode = VTD.DISPLAY_MODE_COUNTIES;
-				mapPanel.invalidate();
-				mapPanel.repaint();
-			}
-		});
-		mnView.add(mntmColorByCounty);
-		
-		mntmColorBySplits = new JRadioButtonMenuItem("Color by splits");
-		mntmColorBySplits.setEnabled(false);
-		mntmColorBySplits.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				VTD.display_mode = VTD.DISPLAY_MODE_COUNTY_SPLITS;
-				mapPanel.invalidate();
-				mapPanel.repaint();
-			}
-		});
-		mnView.add(mntmColorBySplits);
-		
-		separator_17 = new JSeparator();
-		mnView.add(separator_17);
-		
-				mntmShowVoteBalance = new JRadioButtonMenuItem("Color by vtd vote");
-				
-				mntmShowVoteBalance.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent arg0) {
-						VTD.display_mode = VTD.DISPLAY_MODE_VOTES;
-						mapPanel.invalidate();
-						mapPanel.repaint();
-					}
-				});
-				mnView.add(mntmShowVoteBalance);
 		mnView.add(mntmColorByVote);
 		
-		//add before the jseparator
-				mntmColorDistDemo = new JRadioButtonMenuItem("Color by district demographics");
-				mntmColorDistDemo.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						VTD.display_mode = VTD.DISPLAY_MODE_DIST_DEMO;
-						mapPanel.invalidate();
-						mapPanel.repaint();
-					}
-				});
-				
-								mntmColorPartisanPacking = new JRadioButtonMenuItem("Color by district partisan vote packing");
-								mntmColorPartisanPacking.addActionListener(new ActionListener() {
-									public void actionPerformed(ActionEvent e) {
-										VTD.display_mode = VTD.DISPLAY_MODE_PARTISAN_PACKING;
-										mapPanel.invalidate();
-										mapPanel.repaint();
-									}
-								});
-								mnView.add(mntmColorPartisanPacking);
-				
-				mntmColorByVtd = new JRadioButtonMenuItem("Color by vtd partisan packing");
-				mntmColorByVtd.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						VTD.display_mode = VTD.DISPLAY_MODE_PARTISAN_PACKING2;
-						mapPanel.invalidate();
-						mapPanel.repaint();
-					}
-				});
-				
-				mntmColorByCentered = new JRadioButtonMenuItem("Color by centered partisan vote packing");
-				mntmColorByCentered.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						VTD.display_mode = VTD.DISPLAY_MODE_PARTISAN_PACKING_MEAN;
-						mapPanel.invalidate();
-						mapPanel.repaint();
-					}
-				});
-				mnView.add(mntmColorByCentered);
-				mnView.add(mntmColorByVtd);
-				
-				rdbtnmntmColorBySeats = new JRadioButtonMenuItem("Color by seats won");
-				rdbtnmntmColorBySeats.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						VTD.display_mode = VTD.DISPLAY_MODE_DIST_SEATS;
-						mapPanel.invalidate();
-						mapPanel.repaint();
-					}
-				});
-				mnView.add(rdbtnmntmColorBySeats);
-				
-				separator_18 = new JSeparator();
-				mnView.add(separator_18);
-				mntmShowDemographics = new JRadioButtonMenuItem("Color by vtd demographic");
-				mntmShowDemographics.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent arg0) {
-						if( false) {
-							JOptionPane.showMessageDialog(null,"Not implemented");
-							return;
-						}
-						VTD.display_mode = VTD.DISPLAY_MODE_DEMOGRAPHICS;
-						mapPanel.invalidate();
-						mapPanel.repaint();
-					}
-				});
-				mnView.add(mntmShowDemographics);
-				mnView.add(mntmColorDistDemo);
-
-				mntmColorRacialPacking = new JRadioButtonMenuItem("Color by district racial vote packing");
-				mntmColorRacialPacking.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						VTD.display_mode = VTD.DISPLAY_MODE_RACIAL_PACKING;
-						mapPanel.invalidate();
-						mapPanel.repaint();
-					}
-				});
-				mnView.add(mntmColorRacialPacking);
-		
-		mntmColorByVtd_1 = new JRadioButtonMenuItem("Color by vtd racial packing");
-		mntmColorByVtd_1.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				VTD.display_mode = VTD.DISPLAY_MODE_RACIAL_PACKING2;
+		mntmShowVoteBalance.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				Feature.display_mode = Feature.DISPLAY_MODE_VOTES;
 				mapPanel.invalidate();
 				mapPanel.repaint();
 			}
 		});
 		
-		mntmColorByCentered_1 = new JRadioButtonMenuItem("Color by centered racial vote packing");
-		mntmColorByCentered_1.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				VTD.display_mode = VTD.DISPLAY_MODE_RACIAL_PACKING_MEAN;
+		separator_8 = new JSeparator();
+		mnView.add(separator_8);
+		mnView.add(mntmShowVoteBalance);
+		mntmShowDemographics.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				if( false) {
+					JOptionPane.showMessageDialog(null,"Not implemented");
+					return;
+				}
+				Feature.display_mode = Feature.DISPLAY_MODE_DEMOGRAPHICS;
 				mapPanel.invalidate();
 				mapPanel.repaint();
 			}
 		});
-		mnView.add(mntmColorByCentered_1);
-		mnView.add(mntmColorByVtd_1);
-		
-		rdbtnmntmColorByDescr = new JRadioButtonMenuItem("Color by descr. representation");
-		rdbtnmntmColorByDescr.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				VTD.display_mode = VTD.DISPLAY_MODE_DIST_DESCR;
-				mapPanel.invalidate();
-				mapPanel.repaint();
-
-				//DISPLAY_MODE_DIST_DESCR
-			}
-		});
-		mnView.add(rdbtnmntmColorByDescr);
+		mnView.add(mntmShowDemographics);
 		
 		
 		mnView.add(new JSeparator());
@@ -5360,7 +4843,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					
 					DistrictMap dm = featureCollection.ecology.population.get(0);
 					for( int i = 0; i < dm.vtd_districts.length; i++) {
-						VTD b = featureCollection.ecology.vtds.get(i);
+						VTD b = featureCollection.ecology.wards.get(i);
 						//sb.append(b.name+", "+dm.ward_districts[i]+"\n\r");
 						//fis.write((""+b.name.trim()+", "+dm.ward_districts[i]+"\r\n").getBytes());
 					}
@@ -5450,7 +4933,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					dm.fillDistrictwards();
 				
 				}
-				VTD.display_mode = 0;
+				Feature.display_mode = 0;
 				mapPanel.invalidate();
 				mapPanel.repaint();
 				panelStats.getStats();
@@ -5481,7 +4964,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 						
 						DistrictMap dm = featureCollection.ecology.population.get(pop);
 						for( int i = 0; i < dm.vtd_districts.length; i++) {
-							VTD b = featureCollection.ecology.vtds.get(i);
+							VTD b = featureCollection.ecology.wards.get(i);
 							//sb.append(b.name+", "+dm.ward_districts[i]+"\n\r");
 							//fis.write((""+b.name.trim()+", "+dm.ward_districts[i]+"\r\n").getBytes());
 						}
@@ -5503,73 +4986,21 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				JOptionPane.showMessageDialog(null,"Not implemented.");
 			}
 		});
-		
-		/*mntmExplainStats = new JMenuItem("Explain stats");
-		mntmExplainStats.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				Applet.browseTo(PanelStats.stats_descriptions_url);
-			}
-		});*/
-		//mnHelp_1.add(mntmExplainStats);
 		//menuBar.add(S)
-		mnHelp_1.add(mntmWebsite);
-		mnHelp_1.add(mntmSourceCode);
-		mnHelp_1.add(mntmLicense);
+		mnHelp.add(mntmWebsite);
+		mnHelp.add(mntmSourceCode);
+		mnHelp.add(mntmLicense);
 		
 		menuBar.add(mnWindows);
 		mnWindows.add(mntmShowStats);
 		mnWindows.add(mntmShowGraph);
-		mntmShowSeats = new JMenuItem("Show seats / votes");
+		mnWindows.add(mntmShowData);
 		mnWindows.add(mntmShowSeats);
 		mntmShowSeats.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				frameSeatsVotesChart.show();
 			}
 		});
-		mnWindows.add(mntmShowData);
-		
-		mntmShowScripts = new JMenuItem("Show scripts");
-		mntmShowScripts.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				ip.show();
-			}
-		});
-		mnWindows.add(mntmShowScripts);
-		
-		mntmShowPieCharts = new JMenuItem("Show pie charts");
-		mntmShowPieCharts.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				pie.show();
-			}
-		});
-		mnWindows.add(mntmShowPieCharts);
-		
-		mntmShowAdvancedStats = new JMenuItem("Show advanced stats (snapshot)");
-		mntmShowAdvancedStats.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				if( MainFrame.mainframe.project.multiElections.size() < 3) {
-					JOptionPane.showMessageDialog(null, "Must have at least three elections selected to compute advanced statistics.");
-					return;
-				}
-				if( featureCollection.ecology.population == null || featureCollection.ecology.population.size() == 0) {
-					featureCollection.ecology.population =  new Vector<DistrictMap>();
-		    		featureCollection.ecology.population.add(new DistrictMap(featureCollection.ecology.vtds,Settings.num_districts));
-				}
-				DistrictMap dm = featureCollection.ecology.population.get(0);
-				double[][][] ee = dm.getAllElectionOutcomes();
-				Metrics m = new Metrics(ee[0],ee[1],Settings.num_districts);
-				m.trials = 10000;
-				m.showBetas();
-				m.computeSeatProbs(false);
-				m.showSeats();
-				m.computeAsymmetry(false);
-				m.showAsymmetry();
-				m.showHistogram();
-				m.showBetaParameters();
-				m.showSeatsVotes();
-			}
-		});
-		mnWindows.add(mntmShowAdvancedStats);
 		
 		
 		mntmShowData.addActionListener(new ActionListener() {
@@ -5601,13 +5032,11 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			}
 		});
 		menuBar.add(Box.createHorizontalGlue());
-		mnHelp_1.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT); 
-		menuBar.add(mnHelp_1);
+		mnHelp.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT); 
+		menuBar.add(mnHelp);
 		
 		JSplitPane splitPane = new JSplitPane();
 		JSplitPane splitPane2 = new JSplitPane();
-		splitPane_1 = new JSplitPane();
-
 		getContentPane().add(splitPane, BorderLayout.CENTER);
 		
 		JPanel panel = new JPanel();
@@ -5619,7 +5048,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		splitPane.setLeftComponent(panel);
 		
 		JPanel panel_2 = new JPanel();
-		panel_2.setBounds(400, 55, 200, 274);
+		panel_2.setBounds(400, 55, 200, 301);
 		panel.add(panel_2);
 		panel_2.setLayout(null);
 		panel_2.setBorder(new LineBorder(new Color(0, 0, 0)));
@@ -5651,7 +5080,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		sliderDisconnected.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
 				Settings.disconnected_population_weight = sliderDisconnected.getValue()/100.0;
-				ip.addHistory("SET WEIGHT CONTIGUITY "+Settings.disconnected_population_weight);
 			}
 		});
 		sliderDisconnected.setBounds(6, 57, 190, 29);
@@ -5663,7 +5091,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		});
 		rdbtnMinimizeMaxDev.setSelected(true);
 		rdbtnMinimizeMaxDev.setFont(new Font("Lucida Grande", Font.PLAIN, 11));
-		rdbtnMinimizeMaxDev.setBounds(6, 220, 169, 23);
+		rdbtnMinimizeMaxDev.setBounds(16, 220, 169, 23);
 		
 		panel_2.add(rdbtnMinimizeMaxDev);
 		rdbtnMinimizeMeanDev.addActionListener(new ActionListener() {
@@ -5672,7 +5100,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			}
 		});
 		rdbtnMinimizeMeanDev.setFont(new Font("Lucida Grande", Font.PLAIN, 11));
-		rdbtnMinimizeMeanDev.setBounds(6, 244, 169, 23);
+		rdbtnMinimizeMeanDev.setBounds(16, 255, 169, 23);
 		
 		panel_2.add(rdbtnMinimizeMeanDev);
 		buttonGroupPopMinMethod.add(rdbtnMinimizeMeanDev);
@@ -5683,7 +5111,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		chckbxNewCheckBox_1.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				Settings.mutate_disconnected = chckbxNewCheckBox_1.isSelected();
-				ip.addHistory("SET CONSTRAIN CONTIGUITY  "+(chckbxNewCheckBox_1.isSelected() ? "TRUE" : "FALSE"));
 			}
 		});
 		chckbxNewCheckBox_1.setFont(new Font("Tahoma", Font.PLAIN, 9));
@@ -5696,7 +5123,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			public void actionPerformed(ActionEvent e) {
 				Settings.mutate_excess_pop = chckbxConstrain.isSelected();
 				Settings.mutate_good = chckbxConstrain.isSelected() && chckbxConstrain_1.isSelected();
-				ip.addHistory("SET CONSTRAIN POPULATION  "+(chckbxConstrain.isSelected() ? "TRUE" : "FALSE"));
 			}
 		});
 		chckbxConstrain.setFont(new Font("Tahoma", Font.PLAIN, 9));
@@ -5713,31 +5139,26 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		JLabel lblPopulation = new JLabel("Population");
 		lblPopulation.setBounds(6, 40, 104, 16);
 		panel_3.add(lblPopulation);
-		evolutionPopulationTF.setBounds(105, 34, 91, 28);
-		panel_3.add(evolutionPopulationTF);
-		evolutionPopulationTF.addFocusListener(new FocusAdapter() {
+		textField.setBounds(105, 34, 91, 28);
+		panel_3.add(textField);
+		textField.addFocusListener(new FocusAdapter() {
 			@Override
 			public void focusLost(FocusEvent e) {
-				evolutionPopulationTF.postActionEvent();
+				textField.postActionEvent();
 			}
 		});
-		evolutionPopulationTF.addActionListener(new ActionListener() {
+		textField.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				 try {
-					 int n = new Integer(evolutionPopulationTF.getText());
-					 if( n == Settings.population) {
-						 return;
-					 }
-					 Settings.population = n;
-					 ip.addHistory("SET EVOLUTION POPULATION "+Settings.population);
+					 Settings.population = new Integer(textField.getText());
 				 } catch (Exception ex) {
 					 
 				 }
 			}
 		});
 		
-		evolutionPopulationTF.setText(""+Settings.population);
-		evolutionPopulationTF.setColumns(10);
+		textField.setText(""+Settings.population);
+		textField.setColumns(10);
 		
 		JLabel lblNewLabel = new JLabel("Evolution");
 		lblNewLabel.setFont(new Font("Tahoma", Font.BOLD, 14));
@@ -5758,8 +5179,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		sliderElitism.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
 				Settings.elite_fraction = ((double)sliderElitism.getValue())/100.0;
-				ip.addHistory("SET EVOLUTION ELITE_FRAC "+Settings.elite_fraction);
-
 			}
 		});
 		sliderElitism.setValue((int)(Settings.elite_fraction*100.0));
@@ -5781,8 +5200,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		sliderElitesMutated.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
 				Settings.elite_mutate_fraction = ((double)sliderElitesMutated.getValue())/100.0;
-				ip.addHistory("SET EVOLUTION ELITE_MUTATE_FRAC "+Settings.elite_mutate_fraction);
-
 			}
 		});
 		sliderElitesMutated.setValue(100);
@@ -5794,23 +5211,11 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		slider_anneal.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
 				Settings.anneal_rate = Math.exp(3.0*((double)slider_anneal.getValue()-50.0)/50.0);
-				ip.addHistory("SET EVOLUTION ANNEAL_RATE "+(((double)slider_anneal.getValue())/100.0));
-
 				//System.out.println("anneal rate set to: "+Settings.anneal_rate);
 			}
 		});
 		slider_anneal.setBounds(6, 97, 190, 29);
 		panel_3.add(slider_anneal);
-		
-		chckbxRecombination = new JCheckBox("Recombination");
-		chckbxRecombination.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				Settings.recombination_on = chckbxRecombination.isSelected();
-			}
-		});
-		chckbxRecombination.setSelected(true);
-		chckbxRecombination.setBounds(6, 228, 128, 23);
-		panel_3.add(chckbxRecombination);
 		textFieldNumDistricts.setText(""+Settings.num_districts);
 		
 		
@@ -5818,7 +5223,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			@Override
 			public void focusLost(FocusEvent arg0) {
 				textFieldNumDistricts.postActionEvent();
-
 			}
 		});
 		textFieldNumDistricts.addActionListener(new ActionListener() {
@@ -5826,7 +5230,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				try {
 					Settings.num_districts = Integer.parseInt(textFieldNumDistricts.getText());
 					setSeatsMode();
-					ip.addHistory("SET DISTRICTS NUM_DISTRICTS "+Settings.num_districts);
 				} catch (Exception ex) { }
 			}
 		});
@@ -5869,7 +5272,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				progressBar.setIndeterminate(true);
 				progressBar.setStringPainted(true);
 				progressBar.setValue(0);
-				ip.addHistory("GO\n");
 			}
 		});
 		goButton.setBounds(109, 29, 83, 29);
@@ -5888,7 +5290,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					Settings.seats_number_per_district = Integer.parseInt(textFieldSeatsPerDistrict.getText());
 					setSeatsMode();
 					panelStats.getStats();
-					ip.addHistory("SET DISTRICTS SEATS_PER_DISTRICT "+Settings.seats_number_per_district);
 				} catch (Exception ex) { }
 			}
 		});
@@ -5897,7 +5298,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		textFieldSeatsPerDistrict.setBounds(132, 106, 52, 28);
 		panel.add(textFieldSeatsPerDistrict);
 		
-		lblMembersPerDistrict = new JRadioButton("Seats/district");
+		JRadioButton lblMembersPerDistrict = new JRadioButton("Seats/district");
 		lblMembersPerDistrict.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				setSeatsMode();
@@ -5930,7 +5331,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			public void itemStateChanged(ItemEvent arg0) {
 				if( hushcomboBoxDistrict) return;
 				setDistrictColumn((String)comboBoxDistrictColumn.getSelectedItem());
-				ip.addHistory("SET DISTRICTS COLUMN "+comboBoxDistrictColumn.getSelectedItem());
 			}
 		});
 		comboBoxDistrictColumn.setBounds(8, 522, 178, 20);
@@ -5939,7 +5339,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		panel_4 = new JPanel();
 		panel_4.setBorder(new LineBorder(new Color(0, 0, 0)));
 		panel_4.setLayout(null);
-		panel_4.setBounds(400, 329, 200, 320);
+		panel_4.setBounds(400, 356, 200, 293);
 		panel.add(panel_4);
 		
 		JLabel lblContiguency = new JLabel("Proportional");
@@ -5953,7 +5353,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		sliderWastedVotesTotal.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
 				Settings.competitiveness_weight = sliderWastedVotesTotal.getValue()/100.0;
-				ip.addHistory("SET WEIGHT COMPETITION "+Settings.competitiveness_weight);
 			}
 		});
 		sliderWastedVotesTotal.setBounds(11, 60, 180, 29);
@@ -5975,12 +5374,20 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		sliderSeatsVotes.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
 				Settings.seats_votes_asymmetry_weight = sliderSeatsVotes.getValue()/100.0;
-				ip.addHistory("SET WEIGHT PARTISAN "+Settings.seats_votes_asymmetry_weight);
 			}
 		});
 		sliderSeatsVotes.setToolTipText("<html><img src=\"" + Applet.class.getResource("/resources/seats_votes_asymmetry_tooltip.png") + "\">");
 		sliderSeatsVotes.setBounds(10, 180, 180, 29);
 		panel_4.add(sliderSeatsVotes);
+		
+		btnElectionColumns = new JButton("Election columns");
+		btnElectionColumns.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				selectLayers();
+			}
+		});
+		btnElectionColumns.setBounds(6, 268, 184, 23);
+		panel.add(btnElectionColumns);
 		
 		lblGeometricFairness = new JLabel("Geometric <===> Fairness");
 		lblGeometricFairness.setHorizontalAlignment(SwingConstants.CENTER);
@@ -5991,7 +5398,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		sliderBalance.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
 				Settings.geo_or_fair_balance_weight = sliderBalance.getValue()/100.0;
-				ip.addHistory("SET WEIGHT GEOMETRY_FAIRNESS "+Settings.geo_or_fair_balance_weight);
 			}
 		});
 		sliderBalance.setBounds(408, 26, 182, 29);
@@ -6061,6 +5467,78 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		});
 		chckbxSubstituteColumns.setBounds(6, 439, 178, 23);
 		panel.add(chckbxSubstituteColumns);
+		btnElection2Columns.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				selectLayers2();
+			}
+		});
+		btnElection2Columns.setEnabled(false);
+		btnElection2Columns.setBounds(7, 333, 184, 23);
+		
+		panel.add(btnElection2Columns);
+		chckbxSecondElection.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				boolean b = chckbxSecondElection.isSelected();
+				if( b && false) {
+					JOptionPane.showMessageDialog(mainframe, "Not implemented.");
+					chckbxSecondElection.setSelected(false);
+					return;
+				}
+				btnElection2Columns.setEnabled(b);
+				chckbxThirdElection.setEnabled(b);
+				//Settings.substitute_uncontested = b;
+				if( b) {
+					if( project.election_columns == null || project.election_columns.size() < 1) {
+						JOptionPane.showMessageDialog(mainframe, "Must select election columns first.");
+						chckbxSecondElection.doClick();
+					} else {
+						btnElection2Columns.doClick();
+					}
+				} else {
+					setMaxElections();					
+				}
+			}
+		});
+		chckbxSecondElection.setBounds(6, 301, 178, 23);
+		
+		panel.add(chckbxSecondElection);
+		
+		chckbxThirdElection = new JCheckBox("Third election");
+		chckbxThirdElection.setEnabled(false);
+		chckbxThirdElection.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				boolean b = chckbxThirdElection.isSelected();
+				if( b && false) {
+					JOptionPane.showMessageDialog(mainframe, "Not implemented.");
+					chckbxThirdElection.setSelected(false);
+					return;
+				}
+				btnElection3Columns.setEnabled(b);
+				//Settings.substitute_uncontested = b;
+				if( b) {
+					if( project.election_columns_2 == null || project.election_columns_2.size() < 1) {
+						JOptionPane.showMessageDialog(mainframe, "Must select second election columns first.");
+						chckbxThirdElection.doClick();
+					} else {
+						btnElection3Columns.doClick();
+					}
+				} else {
+					setMaxElections();					
+				}
+			}
+		});
+		chckbxThirdElection.setBounds(6, 373, 178, 23);
+		panel.add(chckbxThirdElection);
+		
+		btnElection3Columns = new JButton("Election 3 columns");
+		btnElection3Columns.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				selectLayers3();
+			}
+		});
+		btnElection3Columns.setEnabled(false);
+		btnElection3Columns.setBounds(7, 405, 184, 23);
+		panel.add(btnElection3Columns);
 		
 		panel_5 = new JPanel();
 		panel_5.setBounds(200, 397, 200, 252);
@@ -6078,7 +5556,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		sliderSplitReduction.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
 				Settings.split_reduction_weight = sliderSplitReduction.getValue()/100.0;
-				ip.addHistory("SET WEIGHT SPLITS "+Settings.split_reduction_weight);
 			}
 		});
 		sliderSplitReduction.setBounds(10, 157, 180, 29);
@@ -6092,8 +5569,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				}
 				MainFrame.mainframe.project.county_column = (String)srcomboBoxCountyColumn.getSelectedItem();
 				setCountyColumn();
-				mntmColorByCounty.setEnabled(MainFrame.mainframe.project.county_column != null && MainFrame.mainframe.project.county_column.length() > 0);
-				mntmColorBySplits.setEnabled(MainFrame.mainframe.project.county_column != null && MainFrame.mainframe.project.county_column.length() > 0);
 				panelStats.getStats();
 			}
 		});
@@ -6105,8 +5580,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		panel_5.add(srlblCountyColumn);
 		
 		chckbxReduceSplits = new JCheckBox("Reduce splits");
-		chckbxReduceSplits.addItemListener(new ItemListener() {
-			public void itemStateChanged(ItemEvent e) {
+		chckbxReduceSplits.setFont(new Font("Tahoma", Font.BOLD, 14));
+		chckbxReduceSplits.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
 				if( false) {
 					JOptionPane.showMessageDialog(null, ""
 							+"\nNot implemented."
@@ -6141,10 +5617,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				srcomboBoxCountyColumn.setEnabled(Settings.reduce_splits);
 				srlblMuniColumn.setEnabled(Settings.reduce_splits);
 				srcomboBoxMuniColumn.setEnabled(Settings.reduce_splits);
-				ip.addHistory("SET WEIGHT COUNT_SPLITS "+(chckbxReduceSplits.isSelected() ? "TRUE" : "FALSE"));
 			}
 		});
-		chckbxReduceSplits.setFont(new Font("Tahoma", Font.BOLD, 14));
 		chckbxReduceSplits.setBounds(6, 7, 176, 23);
 		panel_5.add(chckbxReduceSplits);
 		srlblCountyColumn.setEnabled(Settings.reduce_splits);
@@ -6241,7 +5715,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 					Settings.seats_number_total = Integer.parseInt(textFieldTotalSeats.getText());
 					setSeatsMode();
 					panelStats.getStats();
-					ip.addHistory("SET DISTRICTS FAIRVOTE_SEATS "+Settings.seats_number_total);
 				} catch (Exception ex) { }
 			}
 		});
@@ -6257,37 +5730,39 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		lblTotalSeats.setBounds(6, 146, 124, 16);
 		
 		panel.add(lblTotalSeats);
+		chckbxNewCheckBox.setSelected(true);
+		chckbxNewCheckBox.setEnabled(false);
+		chckbxNewCheckBox.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				Settings.setNo4s(chckbxNewCheckBox.isSelected());
+				setSeatsMode();
+			}
+		});
+		chckbxNewCheckBox.setBounds(16, 180, 172, 23);
+		
+		panel.add(chckbxNewCheckBox);
 		sliderRepresentation.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
 				//Settings.disenfranchise_weight = sliderRepresentation.getValue()/100.0;
 				Settings.diagonalization_weight = sliderRepresentation.getValue()/100.0;
-				ip.addHistory("SET WEIGHT PROPORTIONAL "+Settings.diagonalization_weight);
-
 
 			}
 		});
 		slider_mutation.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
-				//Settings.mutation_boundary_rate = boundary_mutation_rate_multiplier*slider_mutation.getValue()/100.0;;
-				if( Settings.hush_mutate_rate) {
-					return;
-				}
+				//Settings.mutation_boundary_rate = boundary_mutation_rate_multiplier*slider_mutation.getValue()/100.0;
 				Settings.mutation_boundary_rate = Math.exp((slider_mutation.getValue()-100)/Settings.exp_mutate_factor);
-				ip.addHistory("SET EVOLUTION MUTATE_RATE "+(((double)slider_mutation.getValue())/100.0));
+
 			}
 		});
 		sliderPopulationBalance.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
 				Settings.population_balance_weight = sliderPopulationBalance.getValue()/100.0;
-				ip.addHistory("SET WEIGHT POPULATION "+Settings.population_balance_weight);
-
 			}
 		});
 		sliderBorderLength.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
 				Settings.geometry_weight = sliderBorderLength.getValue()/100.0;
-				ip.addHistory("SET WEIGHT COMPACTNESS "+Settings.geometry_weight);
-
 			}
 		});
 
@@ -6349,75 +5824,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		});
 		rdbtnRouletteSelection.setSelected(Settings.SELECTION_MODE == Settings.ROULETTE_SELECTION);
 		selectionType.add(rdbtnRouletteSelection);
-		
-		comboBoxQuota = new JComboBox();
-		comboBoxQuota.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				String s = (String) comboBoxQuota.getSelectedItem();
-				if( s.equals("DROOP")) { 
-					Settings.quota_method = Settings.QUOTA_METHOD_DROOP;
-				} else {
-					Settings.quota_method = Settings.QUOTA_METHOD_HARE;
-				}
-			}
-		});
-		comboBoxQuota.setBounds(52, 178, 136, 27);
-		comboBoxQuota.addItem("DROOP");
-		comboBoxQuota.addItem("HARE");
-		panel.add(comboBoxQuota);
-		
-		lblQuotaMethod = new JLabel("Quota");
-		lblQuotaMethod.setBounds(6, 182, 52, 16);
-		panel.add(lblQuotaMethod);
-		
-		btnMultielectionColumns = new JButton("Multi-Election columns");
-		btnMultielectionColumns.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				boolean is_evolving = evolving;
-				if( is_evolving) { featureCollection.ecology.stopEvolving(); }
-				setDistrictColumn(project.district_column);
-				//featureCollection.loadDistrictsFromProperties(project.district_column);
-				DialogManageElections dlg = new DialogManageElections("Multiple election column selection"
-						,featureCollection.getHeaders()
-						,project.multiElections
-						,project.multiImputators
-						);
-				//dlg.setData(featureCollection,project.election_columns);
-				dlg.show();
-				if( !dlg.ok) {
-					if( is_evolving) { featureCollection.ecology.startEvolving(); }
-					return;
-				}
-
-				try {
-					project.multiElections = dlg.elections;
-					project.multiImputators = dlg.imputators;
-					project.election_columns = dlg.elections.get(0);
-					setElectionColumns();
-					//setElectionColumns();
-				} catch (Exception ex) {
-					System.out.println("ex "+ex);
-					ex.printStackTrace();
-				}
-				//mntmShowDemographics.setSelected(true);
-				//Feature.display_mode = 1;
-				mapPanel.invalidate();
-				mapPanel.repaint();
-				
-				if( is_evolving) { featureCollection.ecology.startEvolving(); }
-			}
-		});
-		btnMultielectionColumns.setBounds(4, 303, 184, 23);
-		panel.add(btnMultielectionColumns);
-		
-		chckbxParetoFront = new JCheckBox("Pareto front");
-		chckbxParetoFront.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				Settings.paretoMode = chckbxParetoFront.isSelected();
-			}
-		});
-		chckbxParetoFront.setBounds(32, 599, 128, 23);
-		panel.add(chckbxParetoFront);
 		rdbtnRouletteSelection.setVisible(false);
 		rdbtnRankSelection.setVisible(false);
 		
@@ -6428,22 +5834,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 		//Settings.speciation_fraction = 0.5;//1.0;
 		//Settings.disconnected_population_weight = 0.0;
-		featuresPanel.setPreferredSize(new Dimension(100,100));
-		featuresPanel.setSize(new Dimension(100,100));
-			
+
 		splitPane.setRightComponent(splitPane2);
-		
 		splitPane2.setOrientation(JSplitPane.VERTICAL_SPLIT);
 		splitPane2.setTopComponent(seatsPanel);
-		splitPane_1.setOrientation(JSplitPane.HORIZONTAL_SPLIT);
-		splitPane_1.setLeftComponent(mapPanel);
-		splitPane_1.setRightComponent(featuresPanel);
-		splitPane_1.setResizeWeight(1.0);
-	
-		splitPane2.setBottomComponent(splitPane_1);
+		splitPane2.setBottomComponent(mapPanel);
 		mapPanel.seatsPanel = seatsPanel;
 		seatsPanel.mapPanel= mapPanel;
-		
 		
 		panelStats.featureCollection = featureCollection;
 		frameStats = new JFrame();
@@ -6461,39 +5858,11 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		frameGraph.setSize(dim);
 		
 		frameGraph.move(this.getWidth(), this.getX());
-		frameSeatsVotesChart.move(this.getWidth(), this.getX()+frameGraph.getHeight());
-		frameStats.move(this.getWidth()+frameSeatsVotesChart.getWidth(), this.getX()+frameGraph.getHeight());
-
 		frameGraph.show();
+		frameSeatsVotesChart.move(this.getWidth(), this.getX()+frameGraph.getHeight());
 		frameSeatsVotesChart.show();
+		frameStats.move(this.getWidth()+frameSeatsVotesChart.getWidth(), this.getX()+frameGraph.getHeight());
 		frameStats.show();
-
-		JRadioButtonMenuItem[] mapModes = new JRadioButtonMenuItem[]{
-				mntmShowVoteBalance,
-				mntmShowDemographics,
-				mntmColorByDistrict,
-				mntmColorByPop,
-				mntmColorByCompactness,
-				mntmColorByVote,
-				mntmColorByCounty,
-				mntmColorBySplits,
-				mntmShowVoteBalance,
-				mntmColorDistDemo,
-				mntmColorPartisanPacking,
-				mntmColorByVtd,
-				mntmColorByCentered,
-				mntmShowDemographics,
-				mntmColorRacialPacking,
-				mntmColorByVtd_1,
-				mntmColorByCentered_1,
-				mntmColorByWasted,
-				rdbtnmntmColorByDescr,
-				rdbtnmntmColorBySeats,
-			};
-			for( int i = 0; i < mapModes.length; i++) {
-				groupColoringMode.add(mapModes[i]);
-			}
-			mntmColorByDistrict.setSelected(true);
 		
 	}
 	public boolean hush_setSeatsMode = false;
@@ -6511,55 +5880,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public JRadioButton rdbtnMinimizeMeanDev = new JRadioButton("Minimize absolute dev.");
 	public JMenuItem mntmCopyColumn;
 	public JSeparator separator_9;
+	public JMenuItem mntmImportCensusData_1;
+	public JSeparator separator_8;
+	public JSeparator separator_10;
 	public JSlider slider_anneal;
 	public JCheckBox chckbxNewCheckBox_1;
 	public JCheckBox chckbxConstrain;
 	public JCheckBox chckbxConstrain_1;
-	public JMenuItem mntmShowScripts;
-	public JRadioButtonMenuItem mntmColorByCounty;
-	public JMenuItem mntmMergeInElection;
-	public JRadioButtonMenuItem mntmColorBySplits;
-	public JMenu mnMerge;
-	public JMenuItem mntmCountyVote;
-	public JMenuItem mntmVtdVote;
-	public JMenuItem mntmBlocklevelCurrentDistricts;
-	public JMenuItem mntmBlocklevelBdistricting;
-	public JSeparator separator_12;
-	public JMenuItem mntmBlocklevelPopulation;
-	public JSeparator separator_13;
-	public JMenuItem mntmBlocklevelEthnicData;
-	public JMenuItem mntmImportBlockFile;
-	public JMenuItem mntmExportBlockFile;
-	public JSeparator separator_14;
-	public JSeparator separator_10;
-	public JMenuItem mntmExportNationalMaps;
-	public JComboBox comboBoxQuota;
-	public JLabel lblQuotaMethod;
-	public JSeparator separator_15;
-	public JCheckBoxMenuItem chckbxmntmOutlineState;
-	public JCheckBoxMenuItem mntmOutlineDistricts;
-	public JCheckBoxMenuItem mntmOutlineCounties;
-	public JCheckBoxMenuItem chckbxmntmFitToNation;
-	public JLabel lblDescriptiveRepr;
-	public JSlider slider;
-	public JSeparator separator_16;
-	public JCheckBoxMenuItem chckbxmntmDividePackingBy;
-	public JRadioButtonMenuItem mntmColorByVtd;
-	public JRadioButtonMenuItem mntmColorByVtd_1;
-	public JSeparator separator_17;
-	public JSeparator separator_18;
-	public JRadioButtonMenuItem mntmColorByCentered;
-	public JRadioButtonMenuItem mntmColorByCentered_1;
-	public JMenuItem mntmExportPieCharts;
-	public JRadioButtonMenuItem rdbtnmntmColorByDescr;
-	public JRadioButtonMenuItem rdbtnmntmColorBySeats;
-	public JSplitPane splitPane_1;
-	public JMenuItem mntmShowPieCharts;
-	public JCheckBox chckbxRecombination;
-	public JButton btnMultielectionColumns;
-	public JMenuItem mntmShowAdvancedStats;
-	public JMenuItem mntmExplainStats;
-	public JCheckBox chckbxParetoFront;
 	public void setSeatsMode() {
 		System.out.println("setSeatsMode called hushed?: "+hush_setSeatsMode);
 		if( hush_setSeatsMode) {
@@ -6636,7 +5963,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	@Override
 	public void valueChanged() {
 		double d = Settings.mutation_boundary_rate;
- 		evolutionPopulationTF.setText(""+Settings.population);
+ 		textField.setText(""+Settings.population);
  		double e = Math.log(Settings.mutation_boundary_rate)*Settings.exp_mutate_factor+100;
  		//double d = Math.exp((slider_mutation.getValue()-100)/Settings.exp_mutate_factor);
 		//System.out.println("new boundary mutation rate: "+Settings.mutation_boundary_rate+" total: "+total+" mutated: "+mutated);
@@ -6705,7 +6032,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		stopButton.setEnabled(false);
 		progressBar.setIndeterminate(false);
 		progressBar.setValue(0);
-		ip.addHistory("STOP\n");
 	}
 	public void saveData(File f, int opt, boolean confirm) {
 		if( opt < 0) {
@@ -6810,7 +6136,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		}
 	}
 	
-	public static Vector processFeaturerenameFile() {
+	public static Vector processVTDrenameFile() {
 		String path = "http://www2.census.gov/geo/docs/reference/codes/files/national_vtd.txt";
 	    URL url;
 	    InputStream is = null;
@@ -6864,7 +6190,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	    return v;
 	}
 	public void trySetBasicColumns() {
-		String[] trys = new String[]{"POPULATION","POP18","VAP","VAP_TOTAL"};
+		String[] trys = new String[]{"POP18","VAP","VAP_TOTAL","POPULATION"};
 		for( int i = 0; i < trys.length; i++) {
 			if(((DefaultComboBoxModel)comboBoxPopulation.getModel()).getIndexOf(trys[i]) >= 0 ) {
 				System.out.println(" found "+trys[i]);
@@ -6879,7 +6205,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				System.out.println(" found "+trys[i]);
 				srcomboBoxCountyColumn.setSelectedItem(trys[i]);
 				chckbxReduceSplits.setSelected(true);
-				//chckbxReduceSplits.postEvent(new ActionEvent(null, 0, ""));
 				break;
 			}
 		}
@@ -6894,1590 +6219,42 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		project.election_columns_2.clear();
 		project.election_columns_3.clear();
 		project.substitute_columns.clear();
-		
-		try {
-			setDemographicColumns();
-			setElectionColumns();
-			setElectionColumns2();
-			setElectionColumns3();
-		} catch (Exception ex) { 
-			ex.printStackTrace();
-		}
-
+		project.demographic_columns.add("");
 
 		String[] headers = featureCollection.getHeaders();
 		String[] demo = new String[]{
 				"CTY_VAP_WHITE","CTY_VAP_BLACK","CTY_VAP_HISPANIC","CTY_VAP_ASIAN","CTY_VAP_INDIAN","CTY_VAP_OTHER",
-				"CTY_VAP_WH","CTY_VAP_BL","CTY_VAP_HI","CTY_VAP_AS","CTY_VAP_IN","CTY_VAP_OT",
-				"VAP_WHITE","VAP_BLACK","VAP_HISPANIC","VAP_HISPAN","VAP_ASIAN","VAP_HAWAII","VAP_INDIAN","VAP_MULTI","VAP_OTHER",
+				"VAP_WHITE","VAP_BLACK","VAP_HISPANIC","VAP_ASIAN","VAP_INDIAN","VAP_OTHER",
 				};
 		String[] elect = new String[]{
 				"CTY_PRES12_DEM","CTY_PRES12_REP",
 				"PRES12_DEM","PRES12_REP",
 				};
 
-		for( int i = 0; i < elect.length; i++) {
-			for( int j = 0; j < headers.length; j++) {
-				if( headers[j].equals(elect[i])) {
-					project.election_columns.add(elect[i]);
-				}
-			}
-		}
-
 		for( int i = 0; i < demo.length; i++) {
 			for( int j = 0; j < headers.length; j++) {
 				if( headers[j].equals(demo[i])) {
-					project.demographic_columns.add(demo[i]);
+					project.election_columns.add(demo[i]);
 				}
 			}
 		}
 
-		try {
-			setDemographicColumns();
-			setElectionColumns();
-			setElectionColumns2();
-			setElectionColumns3();
-		} catch (Exception ex) { 
-			ex.printStackTrace();
-		}
-		//setSubstituteColumns();
-	}
-	public OpenShapeFileThread createOpenShapeFileThread(File vtd_file) {
-		return new OpenShapeFileThread(vtd_file);
-	}
-	
-	
-	public int[] joinToTxt( boolean test, String path, String primary_key, int foreign_key, int start_row, int[] cols, String[] names) {
-		boolean try_trim_zeros = false;
-
-		int found = 0;
-		int not_found = 0;
-		System.out.println("url: "+path);
-		System.out.println("0");
-		URL url;
-		InputStream is = null;
-		System.out.println("0.0");
-
-		BufferedReader br;
-		String line;
-		System.out.println("0.1");
-
-		Vector<String[]> v = new Vector<String[]>();
-
-		Hashtable<String,VTD> dictionary = new Hashtable<String,VTD>();
-		for( int i = 0; i < featureCollection.features.size(); i++) {
-			VTD f =  featureCollection.features.get(i);
-			Object o = f.properties.get(primary_key);
-			if( o == null) {
-				System.out.println("primary key not found!");
-			}
-			dictionary.put(f.properties.get(primary_key).toString(),f);
-		}
-		int total_edit_distance = 0;
-		int total_match_distance = 0;
-		
-		try {
-			System.out.println("1");
-			url = new URL(path);
-			System.out.println("2");
-			is = url.openStream();  // throws an IOException
-			System.out.println("3");
-			br = new BufferedReader(new InputStreamReader(is));
-			System.out.println("4..");
-
-			while ((line = br.readLine()) != null) {
-				System.out.print(".");
-				//System.out.println(line);
-				String[] ss = line.split("\t");
-				for( int i = 0; i < ss.length; i++) {
-					ss[i] = ss[i].replaceAll("\"", "").replaceAll(",", "").replaceAll("\\n", "").replaceAll("\\r", "").trim().toUpperCase();
-				}
-				v.add(ss);
-			}
-		} catch (Exception mue) {
-			System.out.print("ex "+mue);
-			mue.printStackTrace();
-			return new int[]{0,0};
-		}
-		try {
-			if (is != null) is.close();
-		} catch (IOException ioe) {
-			// nothing to see here
-		}
-		System.out.println("5..");
-		
-		if( start_row == 1) {
-			String[] header = v.get(0);
-			int vtd_start = -1;
-			int pres_start = -1;
-			for( int i = 0; i < header.length; i++) {
-				String s = header[i].toUpperCase().trim();
-				if( vtd_start < 0) {
-					if( header[i].equals("VTD NAME") || header[i].equals("NAME")) {
-						vtd_start = i;
-					}
-				}
-				if( pres_start < 0) {
-					if( header[i].equals("OBAMA") || header[i].equals("BARACK OBAMA")) {
-						pres_start = i;
-					}
-				}
-				if( pres_start >= 0 && vtd_start >= 0) {
-					break;
-				}
-			}
-			if( pres_start >= 0 && vtd_start >= 0) {
-				foreign_key = vtd_start;
-				cols = new int[]{pres_start,pres_start+1,pres_start+2,pres_start+3,pres_start+4,pres_start+5};
-			}
-		}
-		for( int i = 0; i < start_row; i++) {
-			v.remove(0);
-		}
-		
-		//collect counties;
-		HashMap<String,Vector<VTD>> county_feats = new HashMap<String,Vector<VTD>>();
-		HashMap<String,Integer> county_pops = new HashMap<String,Integer>();
-		for( VTD feat : featureCollection.features) {
-			try {
-			String county = (String) feat.properties.get(primary_key);
-			if( county == null) {
-				System.out.println("no county found!");
-				continue;
-			}
-			county = county.trim().toUpperCase();
-			
-			Vector<VTD> vf = county_feats.get(county);
-			if( vf == null) { 
-				vf = new Vector<VTD>();
-				county_feats.put(county,vf);
-			}
-			vf.add(feat);
-			Integer i = county_pops.get(county);
-			if( i == null) { 
-				i = new Integer(0);
-				county_pops.put(county,i);
-			}
-			if( feat.properties.POPULATION == 0) {
-				Double d = Double.parseDouble(feat.properties.get(project.population_column).toString());
-				feat.properties.POPULATION = d.intValue();
-			}
-			i += feat.properties.POPULATION;
-			county_pops.put(county,i);
-			} catch (Exception ex) {
-				System.out.println("ex "+ex);
-				ex.printStackTrace();
-			}
-		}
-		
-		//now deaggregate proportional
-		System.out.println("deaggregating proportional...");
-
-		for( String[] ss : v) {
-			String[] tries = new String[]{" COUNTY"," PARISH"," BOROUGH"," CENSUS AREA"," MUNICIPALITY"," VOTING DISTRICT"};
-			try {
-			String incounty = ss[foreign_key].trim().toUpperCase();
-			Vector<VTD> vf = county_feats.get(incounty);
-			if( vf == null) {
-				if( try_trim_zeros ) {
-					while( incounty.length() > 1 && incounty.substring(0,1).equals("0")) {
-						incounty = incounty.substring(1);
-					}
-				}
-				vf = county_feats.get(incounty);
-				if( vf == null) {
-					incounty = ss[foreign_key].trim().toUpperCase();
-					vf = county_feats.get(incounty);
-					if( vf == null) {
-						for( int i = 0; i < tries.length; i++) {
-							vf = county_feats.get(incounty+tries[i]);
-							if( vf != null) {
-								incounty += tries[i];
-								break;
-							}
-						}
-						/*
-						if( vf == null) {
-								System.out.println("not found!: "+incounty);
-								not_found++;
-								continue;
-						}*/
-					}
-				}
-			}
-			if( vf != null) {
-				total_match_distance += incounty.length();
-			}
-			if( vf == null) {
-				Triplet<String,VTD,Integer> best_match = util.Util.findBestMatch(incounty,dictionary);
-				if( best_match == null) {
-					System.out.println("not found!: "+incounty);
-					not_found++;
-					total_edit_distance += incounty.length();
-					continue;
-				} else {
-					found++;
-					incounty = best_match.a;
-					total_edit_distance += best_match.c;
-					total_match_distance += incounty.length() - best_match.c;
-				}
-			}	
-			
-			double total_pop = (double)county_pops.get(incounty);
-			System.out.println("found!: "+incounty+" "+total_pop);
-			found++;
-			double[] dd = new double[cols.length];
-			boolean[] bb = new boolean[cols.length];
-			
-			for( int i = 0; i < cols.length; i++) {
-				try {
-					ss[cols[i]] = ss[cols[i]].replaceAll(",","").replaceAll("\\+","").trim();
-					dd[i] = Double.parseDouble(ss[cols[i]]);///total_pop;
-					bb[i] = true;
-				} catch (Exception ex) {
-					dd[i] = 0;
-					bb[i] = false;
-					ex.printStackTrace();
-				}
-			}
-			if( total_pop == total_pop) {
-				for(VTD feat : vf) {
-					double feat_pop = feat.properties.POPULATION;
-					if( !test) {
-						for( int i = 0; i < cols.length; i++) { 
-							if( bb[i] == false) {
-								continue;
-							}
-							int other =  i+(i % 2 == 1 ? -1 : 1);
-							if( dd[i] == 0 && dd[other] == 0) {
-								System.out.println("both dem and rep are 0, skipping..");
-								continue;
-							}
-							try {
-								if( feat_pop != feat_pop || feat_pop == 0 || total_pop == 0 || feat_pop == total_pop) {
-									feat.properties.put(names[i], ""+dd[i]);
-								} else {
-									feat.properties.put(names[i], ""+(dd[i]*feat_pop/total_pop));
-								}
-							} catch (Exception ex) {
-								System.out.println("ex x "+ex);
-								ex.printStackTrace();
-							}
-						}
-					}
-				}
-			}
-			} catch (Exception ex) {
-				System.out.println("ex: "+ex);
-				ex.printStackTrace();
-			}
-		}
-		return new int[]{total_match_distance,total_edit_distance};
-
-		//return new int[]{found,not_found};
-		
-	}
-
-	class ImportFeatureLevel extends Thread {
-		public Thread nextThread;
-		public void run() {
-			dlbl.setText("Importing election data...");
-			//JOptionPane.showMessageDialog(null,"importing election data.");
-			if( nextThread == null) {
-				//JOptionPane.showMessageDialog(null,"nextThread is null!");
-			}
-			VTD.compare_centroid = false;
-			Collections.sort(featureCollection.features);
-
-			System.out.println("import vtd level start");
-			//String path = "ftp://autoredistrict.org/pub/county_level_stats/VTD%20Detail%20Estimates%20--%20"+Download.states[Download.istate]+".txt";
-			String path = "http://autoredistrict.org/county_level_stats/VTD%20Detail%20Estimates%20--%20"+Download.states[Download.istate].replaceAll(" ", "%20")+".txt";
-			
-			int[] ii;
-			int[] matches = new int[2];
-			int[] non_matches = new int[2];
-			for( int m = 0; m < 2; m++) {
-				ii =  joinToTxt(true,path, "VTDNAME", 3+m, 1, new int[]{4+m,5+m,6+m,7+m,8+m,9+m,10+m,11+m}, new String[]{"PRES12_DEM","PRES12_REP","PRES08_DEM","PRES08_REP","PRES04_DEM","PRES04_REP","CD12_DEM","CD12_REP"});
-				System.out.println("m="+m+" total found: "+ii[0]+"\ntotal not found: "+ii[1]);
-				if( ii[0] == 0 && ii[1] == 0) {
-					/*
-					if( nextThread != null) {
-						nextThread.start();
-						nextThread = null;
-					}
-					return;
-					*/
-				}
-				matches[m] = ii[0];
-				non_matches[m] = ii[1];
-			}
-			double match_pct0 = ((double)matches[0])/(double)(matches[0]+non_matches[0]);
-			double match_pct1 = ((double)matches[1])/(double)(matches[1]+non_matches[1]);
-			if( match_pct1 > 0.95 && matches[1] >= matches[0]) {
-				System.out.println("trying shifting columns by 1...");
-				ii =  joinToTxt(false,path, "VTDNAME", 4, 1, new int[]{5,6,7,8,9,10,11,12}, new String[]{"PRES12_DEM","PRES12_REP","PRES08_DEM","PRES08_REP","PRES04_DEM","PRES04_REP","CD12_DEM","CD12_REP"});
-				System.out.println("total found: "+ii[0]+"\ntotal not found: "+ii[1]);
-			}
-			if( match_pct0 > 0.95 && matches[0] > matches[1]) {
-				System.out.println("trying shifting columns by 1...");
-				ii =  joinToTxt(false,path, "VTDNAME", 3, 1, new int[]{4,5,6,7,8,9,10,11}, new String[]{"PRES12_DEM","PRES12_REP","PRES08_DEM","PRES08_REP","PRES04_DEM","PRES04_REP","CD12_DEM","CD12_REP"});
-				System.out.println("total found: "+ii[0]+"\ntotal not found: "+ii[1]);
-			}
-			
-			//JOptionPane.showMessageDialog(null,"total found: "+ii[0]+"\ntotal not found: "+ii[1]);
-						
-			System.out.println("setting columns final...");
-			trySetBasicColumns();
-			trySetGroupColumns();
-			System.out.println("done county data merge");
-			if( nextThread == null) {
-				//JOptionPane.showMessageDialog(null,"nextThread is null!");
-				System.out.println("no next thread!");
-			}
-
-			if( nextThread != null) {
-				System.out.println("starting next thread");
-				nextThread.start();
-				nextThread = null;
-			}
-		}
-	}
-	class ImportDemographics extends Thread {
-		final static boolean uselatlon = true;
-		//150,700
-		String SUMMARY_LEVEL = "700";
-		Thread nextThread = null;
-		public void run() {
-			dlbl.setText("Importing demographics...");
-
-			String state = Download.states[Download.istate];
-			
-			if( true) {
-				getDemographics(state,Download.state_to_abbr.get(state),""+Download.cyear);
-			}
-		
-			System.out.println("done nextThred: "+nextThread);
-			if( nextThread != null) {
-				nextThread.start();
-				nextThread = null;
-			}
-		}
-		public void getDemographics(String statename, String stateabbr, String year) {
-			if( false) {
-				return;
-			}
-			try {
-				boolean remove_hyphens = false;
-
-			int DATA_STARTS_AT = 3;
-			boolean trim_leading_zeros = false;
-		
-			BiMap<String,String> column_renames = new BiMap<String,String>();
-			String base_url = "http://www2.census.gov/census_2010/01-Redistricting_File--PL_94-171/";
-			
-			String fn_zipfile = stateabbr.toLowerCase()+year+".pl.zip";
-			String url = base_url+statename.replaceAll(" ", "_")+"/"+fn_zipfile;
-			String path = Download.census_tract_path+"demographics"+File.separator;
-
-			Download.download(url,path,fn_zipfile);
-			Download.unzip(path+fn_zipfile, Download.census_tract_path+"demographics"+File.separator);
-			
-			String fn_geoheader = stateabbr.toLowerCase()+"geo"+year+".pl";
-			String fn_part1 = stateabbr.toLowerCase()+"00001"+year+".pl";
-			String fn_part2 = stateabbr.toLowerCase()+"00002"+year+".pl";
-			
-			File f_geoheader = new File(path+fn_geoheader);
-			FileInputStream fis_geoheader = new FileInputStream(f_geoheader);
-			BufferedReader br_geoheader = new BufferedReader(new InputStreamReader(fis_geoheader));
-
-			File f_part1 = new File(path+fn_part1);
-			FileInputStream fis_part1;
-				fis_part1 = new FileInputStream(f_part1);
-			BufferedReader br_part1 = new BufferedReader(new InputStreamReader(fis_part1));
-			
-			File f_part2 = new File(path+fn_part2);
-			FileInputStream fis_part2 = new FileInputStream(f_part2);
-			BufferedReader br_part2 = new BufferedReader(new InputStreamReader(fis_part2));
-			
-			
-			column_renames.put("INTPTLAT","INTPTLAT");
-			column_renames.put("INTPTLON","INTPTLON");
-			column_renames.put("VTD","VTD");
-			
-			column_renames.put("P0020001","POP_TOTAL");
-			column_renames.put("P0020002","POP_HISPAN");
-			column_renames.put("P0020005","POP_WHITE");
-			column_renames.put("P0020006","POP_BLACK");
-			column_renames.put("P0020007","POP_INDIAN");
-			column_renames.put("P0020008","POP_ASIAN");
-			column_renames.put("P0020009","POP_HAWAII");
-			column_renames.put("P0020010","POP_OTHER");
-			column_renames.put("P0020011","POP_MULTI");
-			
-			column_renames.put("P0040001","VAP_TOTAL");
-			column_renames.put("P0040002","VAP_HISPAN");
-			column_renames.put("P0040005","VAP_WHITE");
-			column_renames.put("P0040006","VAP_BLACK");
-			column_renames.put("P0040007","VAP_INDIAN");
-			column_renames.put("P0040008","VAP_ASIAN");
-			column_renames.put("P0040009","VAP_HAWAII");
-			column_renames.put("P0040010","VAP_OTHER");
-			column_renames.put("P0040011","VAP_MULTI");
-			
-			String[] headers = new String[]{
-					"INTPTLAT",
-					"INTPTLON",
-					"VTD",
-					
-					"POP_TOTAL",
-					"POP_HISPAN",
-					"POP_WHITE",
-					"POP_BLACK",
-					"POP_INDIAN",
-					"POP_ASIAN",
-					"POP_HAWAII",
-					"POP_OTHER",
-					"POP_MULTI",
-					
-					"VAP_TOTAL",
-					"VAP_HISPAN",
-					"VAP_WHITE",
-					"VAP_BLACK",
-					"VAP_INDIAN",
-					"VAP_ASIAN",
-					"VAP_HAWAII",
-					"VAP_OTHER",
-					"VAP_MULTI",
-			};
-			int ILAT = 0;
-			int ILON = 1;
-			int FOREIGN_KEY = 2;
-			String[] original_headers = new String[headers.length];
-			for( int i = 0; i < original_headers.length; i++) {
-				original_headers[i] = column_renames.getBackward(headers[i]);
-			}
-			
-
-			Vector<String[]> data = new Vector<String[]>();
-			
-			String sgeo_header = Util.readStream(getClass().getResourceAsStream("/resources/geoheader_cols.txt")); 
-			String spart1_header = Util.readStream(getClass().getResourceAsStream("/resources/part1_cols.txt")); 
-			String spart2_header = Util.readStream(getClass().getResourceAsStream("/resources/part2_cols.txt")); 
-			
-			Vector<Triplet<String,String,Integer>> geo_header = new Vector<Triplet<String,String,Integer>>();
-			Vector<Triplet<String,String,Integer>> part1_header = new Vector<Triplet<String,String,Integer>>();
-			Vector<Triplet<String,String,Integer>> part2_header = new Vector<Triplet<String,String,Integer>>();
-			
-			//System.out.println(sgeo_header.length()+" "+spart1_header.length()+" "+spart2_header.length());
-			
-			String[] lines = sgeo_header.split("\n");
-			//System.out.println("lines: "+lines.length);
-			for( int i = 0; i < lines.length; i++) {
-				String[] ss = lines[i].split("\t");
-				if( ss.length < 3) {
-					continue;
-				}
-				for( int j = 0; j < ss.length; j++ ) {
-					ss[j] = ss[j].trim().replaceAll("\"","").replaceAll("\\r","").replaceAll("\\n","");
-				}
-				//System.out.println("adding |"+ss[0]+"|");
-				geo_header.add(new Triplet<String,String,Integer>(ss[0],ss[1],Integer.parseInt(ss[2])));
-			}
-			lines = spart1_header.split("\n");
-			//System.out.println("lines: "+lines.length);
-			for( int i = 0; i < lines.length; i++) {
-				String[] ss = lines[i].split("\t");
-				if( ss.length < 3) {
-					continue;
-				}
-				for( int j = 0; j < ss.length; j++ ) {
-					ss[j] = ss[j].trim().replaceAll("\"","").replaceAll("\\r","").replaceAll("\\n","");
-				}
-				//System.out.println("adding |"+ss[0]+"|");
-				part1_header.add(new Triplet<String,String,Integer>(ss[0],ss[1],Integer.parseInt(ss[2])));
-			}
-			lines = spart2_header.split("\n");
-			//System.out.println("lines: "+lines.length);
-			for( int i = 0; i < lines.length; i++) {
-				String[] ss = lines[i].split("\t");
-				if( ss.length < 3) {
-					continue;
-				}
-				for( int j = 0; j < ss.length; j++ ) {
-					ss[j] = ss[j].trim().replaceAll("\"","").replaceAll("\\r","").replaceAll("\\n","");
-				}
-				//System.out.println("adding |"+ss[0]+"|");
-				part2_header.add(new Triplet<String,String,Integer>(ss[0],ss[1],Integer.parseInt(ss[2])));
-			}
-			String yr = ""+(Download.cyear % 100); 
-			while( yr.length() < 2) {
-				yr = "0"+yr;
-			}
-			String primary_key = "VTDST"+yr;
-			
-			if( uselatlon) {
-				featureCollection.sortedFeatures = new Vector<VTD>();
-				for( int i = 0; i < featureCollection.vtds.size(); i++) {
-					VTD vtd = featureCollection.vtds.get(i);
-					featureCollection.sortedFeatures.add(vtd);
-					vtd.geometry.makePolysFull();
-					for( int j = DATA_STARTS_AT; j < headers.length; j++) {
-						vtd.properties.put(headers[j],"0");
-					}
-				}
-				VTD.compare_centroid = true;
-				Collections.sort(featureCollection.sortedFeatures);
-				VTD.compare_centroid = false;
-
-			} else {
-				
-			}
-			
-			//collect primary keys;
-			HashMap<String,double[]> from_import = new HashMap<String,double[]>();
-			HashMap<String,Vector<VTD>> county_feats = new HashMap<String,Vector<VTD>>();
-			HashMap<String,Double> county_pops = new HashMap<String,Double>();
-			for( VTD feat : featureCollection.features) {
-				try {
-				String county = (String) feat.properties.get(primary_key);
-				county = county.trim().toUpperCase();
-				if( county.contains("-") && remove_hyphens) {
-					county = county.split("-")[1];
-				}
-				
-				Vector<VTD> vf = county_feats.get(county);
-				if( vf == null) { 
-					vf = new Vector<VTD>();
-					county_feats.put(county,vf);
-				}
-				vf.add(feat);
-				Double i = county_pops.get(county);
-				if( i == null) { 
-					i = new Double(0);
-					county_pops.put(county,i);
-				}
-				//if( feat.properties.POPULATION == 0) {
-					Double d = new Double(0);
-					try { 
-						d = Double.parseDouble(feat.properties.get(project.population_column).toString());
-					} catch (Exception ex) {
-						//ex.printStackTrace();
-					}
-					feat.properties.POPULATION = d.intValue();
-				//}
-				i += feat.properties.POPULATION;
-				county_pops.put(county,i);
-				} catch (Exception ex) {
-					System.out.println("ex aa4 "+ex);
-					ex.printStackTrace();
-					//System.exit(0);
-				}
-			}
-			
-			//read file into hash table (aggregating into vtd's)
-			int lline = 0;
-			while( true) {
-				
-				lline++;
-				if( lline % 1000 == 0) {
-					System.out.print(".");
-				}
-				if( lline % 100000 == 0) {
-					System.out.println(""+lline);
-				}				String geo_line = br_geoheader.readLine();
-				String part1_line =  br_part1.readLine();
-				String part2_line =  br_part2.readLine();
-				if( geo_line == null) {
-					break;
-				}
-				
-				String pseudo_or_actual = ""+geo_line.charAt(167);
-				String summary_level = geo_line.substring(8,11);
-				//System.out.print(summary_level+pseudo_or_actual);
-				//ignore non-vtd's.
-				
-				if( !summary_level.equals(SUMMARY_LEVEL)) {
-				//if( !summary_level.equals("700")) {
-					continue;
-				}
-
-				/*
-				these are "SUMLEV"'; census summary levels
-				700 = vtd
-				150 = block group
-				*/
-				
-				String[] geo_ss = parse_fixed_width(geo_line, geo_header);
-				String[] part1_ss = part1_line.split(",");
-				String[] part2_ss = part2_line.split(",");
-				
-				String[] ss = new String[column_renames.size()];
-				int ndx = 0;
-				
-				for( int i = 0; i < geo_header.size(); i++) {
-					String rename = column_renames.get(geo_header.get(i).a);
-					//if( rename != null) {
-						for( int j = 0; j < headers.length; j++) {
-							if( geo_header.get(i).a.equals(original_headers[j])) {
-								//System.out.println("matched "+j+" "+headers[j]);
-								ss[j] = geo_ss[i];
-								break;
-							}
-						}
-						//ss[ndx++] = geo_ss[i];
-					//}
-				}
-				for( int i = 0; i < part1_header.size(); i++) {
-					String rename = column_renames.get(part1_header.get(i).a);
-					//if( rename != null) {
-						for( int j = 0; j < headers.length; j++) {
-							if( part1_header.get(i).a.equals(original_headers[j])) {
-								//System.out.println("matched "+j+" "+headers[j]);
-								ss[j] = part1_ss[i];
-								break;
-							}
-						}
-					//}
-				}
-				for( int i = 0; i < part2_header.size(); i++) {
-					String rename = column_renames.get(part2_header.get(i).a);
-					//if( rename != null) {
-						for( int j = 0; j < headers.length; j++) {
-							if( part2_header.get(i).a.equals(original_headers[j])) {
-								//System.out.println("matched "+j+" "+headers[j]);
-								ss[j] = part2_ss[i];
-								break;
-							}
-						}
-					//}
-				}
-				for( int i = 0; i < ss.length; i++) {
-					//System.out.println(""+i+": "+ss[i]);
-				}
-				
-				String s = ss[FOREIGN_KEY];
-				if( trim_leading_zeros) {
-					while( s.length() > 1 && s.charAt(0) == '0') {
-						s = s.substring(1);
-					}
-				}
-				
-				if( uselatlon) {
-					
-					double lat = Double.parseDouble(ss[ILAT]);
-					double lon = Double.parseDouble(ss[ILON]);
-					//System.out.println(ss[ILAT]+" "+lat);
-					//System.out.println(ss[ILON]+" "+lon);
-					
-					VTD vtd = getHit(lon,lat);
-					if( vtd == null) {
-						System.out.print("m");
-					} else {
-						for( int j = DATA_STARTS_AT; j < ss.length; j++) {
-							double d0 = 0;
-							double d = Double.parseDouble(ss[j].replaceAll(",",""));
-							Object o = vtd.properties.get(headers[j]);
-							if( o != null) {
-								d0 = Double.parseDouble(vtd.properties.get(headers[j]).toString());
-							}
-							d0 += d;
-							vtd.properties.put(headers[j],""+d0);
-						}
-					}
-				} else {
-					
-					double[] dd = from_import.get(s);
-					if( dd == null) {
-						dd = new double[ss.length-DATA_STARTS_AT];
-						for( int i = 0; i < dd.length; i++) {
-							dd[i] = 0;
-						}
-						from_import.put(s,dd);
-					}
-					for( int i = 0; i < dd.length; i++) {
-						try {
-							dd[i] += Double.parseDouble(ss[i+DATA_STARTS_AT]);
-						} catch (Exception ex) { 
-							System.out.println("ex cc "+ex+""+i+" "+ss[i+DATA_STARTS_AT]+" "+headers[i+DATA_STARTS_AT]);
-							System.exit(0);
-							ex.printStackTrace(); 
-						}
-					}
-				}
-			}
-			
-			//close everything
-			try {
-				br_geoheader.close();
-				br_part1.close();
-				br_part2.close();
-				
-				fis_geoheader.close();
-				fis_part1.close();
-				fis_part2.close();
-			} catch (Exception ex) {
-				ex.printStackTrace();
-				System.exit(0);
-			}
-			if( !uselatlon) {
-				//System.exit(0);
-				int found = 0;
-				int not_found = 0;
-				
-				//now write it out into features.
-				for( Map.Entry<String,double[]> entry : from_import.entrySet() ) {
-					try { 
-						String incounty = entry.getKey();
-						String orig = incounty;
-						double[] dd = entry.getValue();
-						Vector<VTD> vf = county_feats.get(incounty);
-						if( vf == null) {
-							if( incounty.length() > 3) {
-								incounty = incounty.substring(0,2)+"-"+incounty.substring(2);
-							}
-							vf = county_feats.get(incounty);
-							if( vf == null) {
-								incounty = incounty.split("-")[1];
-								vf = county_feats.get(incounty);
-								if( vf == null) {
-									incounty = "0"+incounty;
-									vf = county_feats.get(incounty);
-									if( vf == null) {
-										System.out.println("not found!: "+orig);
-										not_found++;
-										continue;
-									}
-								}
-							}
-						}
-						county_feats.remove(incounty);
-						found++;
-						double total_pop = (double)county_pops.get(incounty);
-						System.out.println("found!: "+incounty+" "+total_pop);
-						System.out.println("feat size "+vf.size());
-						for(VTD feat : vf) {
-							double feat_pop = feat.properties.POPULATION;
-							System.out.println("setting "+feat.properties.get("VTDST10").toString()+" "+feat_pop+" "+total_pop+" "+dd[0]+" "+dd[1]);
-							for( int i = 0; i < dd.length; i++) {
-								feat.properties.put(headers[i+DATA_STARTS_AT], ""+(dd[i]*feat_pop/total_pop));
-							}
-						}
-					} catch (Exception ex) {
-						System.out.println("ex bb: "+ex);
-						ex.printStackTrace();
-						System.exit(0);
-	
-					}
-				}	
-			}
-			//finish up unmatched entries.
-			/*
-			for( Entry<String, Vector<Feature>> entry : county_feats.entrySet() ) {
-				System.out.println("filling "+entry.getKey());
-				for( Feature feat : entry.getValue()) {
-					for( int i = DATA_STARTS_AT; i < headers.length; i++) {
-						feat.properties.put(headers[i], ""+0);
-					}
-				}
-			}
-			*/
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				System.exit(0);
-
-			}
-
-		}
-
-		public String[] parse_fixed_width(String s, Vector<Triplet<String,String,Integer>> header) {
-			String[] ss = new String[header.size()];
-			for( int i = 0; i < header.size(); i++) {
-				int n = header.get(i).c < s.length() ? header.get(i).c : s.length();
-				ss[i] = s.substring(0,n);
-				s = s.substring(n); 
-			}
-			return ss;
-		}
-	}
-	
-	public void importBlocksBdistricting() {
-		VTD.compare_centroid = false;
-		Collections.sort(featureCollection.features);
-
-		String path = Download.getStartPath()+File.separator+"bdistricting";
-		Download.downloadAndExtract(Download.bdistricting_congress_url(),path);
-		Download.downloadAndExtract(Download.bdistricting_senate_url(),path);
-		String[] urls = Download.bdistricting_house_urls();
-		for( int i = 0 ; i < urls.length; i++) {
-			Download.downloadAndExtract(urls[i],path);
-		}
-		String abbr = Download.state_to_abbr.get(Download.states[Download.istate]);
-		
-		importBlockData(path+File.separator+abbr+"_Congress.csv", true, false, new String[]{"CD_BD"},new String[]{"CD_BD"},false);
-		importBlockData(path+File.separator+abbr+"_Senate.csv", true, false, new String[]{"SLDU_BD"},new String[]{"SLDU_BD"},false);
-		String[] tries = new String[]{"House","General","Legislature","Assembly"};
-		for( int i = 0; i < tries.length; i++) {
-			if( new File(path+File.separator+abbr+"_"+tries[i]+".csv").exists() || i == tries.length-1) {
-				importBlockData(path+File.separator+abbr+"_"+tries[i]+".csv", true, false, new String[]{"SLDL_BD"},new String[]{"SLDL_BD"},false);
-				break;
-			}
-		}
-		VTD.compare_centroid = false;
-		Collections.sort(featureCollection.features);
-
-		Applet.deleteRecursive(new File(path));
-	}
-
-
-	public void importBlocksCurrentDistricts() {
-		VTD.compare_centroid = false;
-		Collections.sort(featureCollection.features);
-
-		String path = Download.getStartPath()+File.separator+"current";
-		Download.downloadAndExtract(Download.census_districts_url(),path);
-		String abbr = Download.state_to_abbr.get(Download.states[Download.istate]);
-		String fips = ""+Download.istate;
-		if( fips.length() < 2) {
-			fips = "0"+fips;
-		}
-		try {
-			new File(path+File.separator+"BlockAssign_ST"+fips+"_"+abbr+"_CD.txt").renameTo(new File(path+File.separator+"BlockAssign_ST"+fips+"_"+abbr+"_CD.csv"));
-			new File(path+File.separator+"BlockAssign_ST"+fips+"_"+abbr+"_SLDU.txt").renameTo(new File(path+File.separator+"BlockAssign_ST"+fips+"_"+abbr+"_SLDU.csv"));
-			new File(path+File.separator+"BlockAssign_ST"+fips+"_"+abbr+"_SLDL.txt").renameTo(new File(path+File.separator+"BlockAssign_ST"+fips+"_"+abbr+"_SLDL.csv"));
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
-		
-		try {
-			importBlockData(path+File.separator+"BlockAssign_ST"+fips+"_"+abbr+"_CD.csv", true, true, new String[]{"DISTRICT"},new String[]{"CD_NOW"},true);
-			importBlockData(path+File.separator+"BlockAssign_ST"+fips+"_"+abbr+"_SLDU.csv", true, true, new String[]{"DISTRICT"},new String[]{"SLDU_NOW"},true);
-			importBlockData(path+File.separator+"BlockAssign_ST"+fips+"_"+abbr+"_SLDL.csv", true, true, new String[]{"DISTRICT"},new String[]{"SLDL_NOW"},true);
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
-		VTD.compare_centroid = false;
-		Collections.sort(featureCollection.features);
-		
-		Applet.deleteRecursive(new File(path));
-	}
-
-/*preparing:
-
-					String[] options = new String[]{"Accumulate","Majority vote"};
-					int ACCUMULATE = 0;
-					int MAJORITY = 1;
-					int opt = JOptionPane.showOptionDialog(mainframe, "Accumulate values or majority vote?", "Select option", 0,0,null,options,options[0]);
-					if( opt < 0) {
-						System.out.println("aborted.");
-						return;
-					}
-
-					DialogMultiColumnSelect dsc = new DialogMultiColumnSelect("Select columns to import",dh.header,new String[]{});
-					dsc.show();
-					if( !dsc.ok) {
-						return;
-					}
-					Object[] dest_columns = dsc.in.toArray();
-					int[] col_indexes = new int[dsc.in.size()]; 
-					for( int i = 0; i < col_indexes.length; i++) {
-						String test = ((String)dest_columns[i]).toUpperCase().trim();
-						for( int j = 0; j < dh.header.length; j++) {
-							if( dh.header[j].toUpperCase().trim().equals(test)) {
-								col_indexes[i] = j;
-								break;
-							}
-						}
-					}
-					
-
-ui.Mainframe:	
-*/				
-
-	public void importBlockData(String filename, boolean MAJORITY_VOTE, boolean HAS_HEADER_ROW, String[] source_columns, String[] dest_columns, boolean one_indexed) {
-			int ACCUMULATE = 0;
-			int MAJORITY = 1;
-			int opt = MAJORITY_VOTE ? 1 : 0;
-			//TODO - if missed, fill with majority neighbor.
-			
-			DataAndHeader dh = new DataAndHeader();
-
-			int col_lat = -1;
-			int col_lon = -1;
-			int col_geoid_centroid = -1;
-			//Hashtable<String,int[]> hash_centroids = new Hashtable<String,int[]>();
-			Hashtable<String,VTD> hash_geoid_feat = new Hashtable<String,VTD>();
-			
-
-			DBFReader dbfReader;
-
-
-
-    		dlg.setVisible(true);
-
-//download/extract centroid file if not there.
-			File test = new File(Download.census_centroid_file.getAbsolutePath());
-			if( !test.exists()) {
-				Download.downloadAndExtractCentroids();
-			}
-
-
-//make polygons
-    		dlbl.setText("Making polygons...");
-
-			
-			int count = 0;
-    		for( VTD feat : featureCollection.features) {
-    			feat.geometry.makePolysFull();
-				feat.population = 0;
-    		}
-    		
-    		dlbl.setText("Doing hit tests...");
-			//Feature.compare_centroid = true;
-			//Collections.sort(featureCollection.features);
-			
-//make centroid hash
-			try {
-				dbfReader = new DBFReader(Download.census_centroid_file.getAbsolutePath());
-			} catch (Exception e1) {
-				e1.printStackTrace();
-				return;
-			}
-			
-    		dlbl.setText("Reading header...");
-
-			dh.header = new String[dbfReader.getFieldCount()];
-			for( int i = 0; i < dh.header.length; i++) {
-				dh.header[i] = dbfReader.getField(i).name;
-				System.out.println(dh.header[i]+" ");
-
-				if( dh.header[i].toUpperCase().trim().indexOf("INTPTLAT") == 0) {
-					col_lat = i;
-				}
-				if( dh.header[i].toUpperCase().trim().indexOf("INTPTLON") == 0) {
-					col_lon = i;
-				}
-				if( dh.header[i].toUpperCase().trim().indexOf("GEOID") == 0 || dh.header[i].toUpperCase().trim().indexOf("BLOCKID") == 0) {
-					col_geoid_centroid = i;
-				}
-			}
-			if( col_geoid_centroid < 0 || col_lat < 0 || col_lon < 0) {
-				JOptionPane.showMessageDialog(mainframe, "Required columns not found."
-						+"\ncol_geoid_centroid "+col_geoid_centroid
-						//+"\ncol_lat "+col_lat
-						//+"\ncol_lon "+col_lon
-						);
-				dlg.setVisible(false);
-				return;
-			}
-
-    		dlbl.setText("Creating blockid to feature hash...");
-    		System.out.println("Creating blockid to feature hash...");
-    		int n = 0;
-		    while (dbfReader.hasNextRecord()) {
-		    	if( n % 100 == 0) {
-		    		System.out.print(".");
-		    	}
-		    	if( n % 10000 == 0) {
-		    		System.out.println(""+n);
-		    	}
-		    	n++;
-		    	try {
-		    		Object[] oo = dbfReader.nextRecord(Charset.defaultCharset());
-		    		String[] ss = new String[oo.length];
-		    		for( int i = 0; i < oo.length; i++) {
-		    			ss[i] = oo[i].toString().trim();
-		    		}
-		    		double dlat = Double.parseDouble(ss[col_lat].replaceAll(",","").replaceAll("\\+",""));
-		    		double dlon = Double.parseDouble(ss[col_lon].replaceAll(",","").replaceAll("\\+",""));
-					
-	    			VTD feat = getHit(dlon,dlat);
-	    			if( ss != null && ss[col_geoid_centroid] != null && feat != null) {
-	    				hash_geoid_feat.put(ss[col_geoid_centroid],feat);
-	    			}
-					
-					
-		    		//int ilat = (int)(dlat*Geometry.SCALELATLON);
-		    		//int ilon = (int)(dlon*Geometry.SCALELATLON);
-		    		//hash_centroids.put(ss[col_geoid_centroid].trim(),new int[]{ilat,ilon});
-		    	} catch (Exception ex) {
-		    		ex.printStackTrace();
-		    	}
-		    }
-		    try {
-				dbfReader.close();
-			} catch (Exception e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-		    System.out.println();
-
-//resort features
-			//VTD.compare_centroid = false;
-			//Collections.sort(featureCollection.features);
-							
-//read headers
-    		System.out.println("Reading headers...");
-    		dlbl.setText("Reading headers...");
-
-			File f = new File(filename);
-			String ext = filename.substring(filename.length()-3).toLowerCase();
-			dh = new DataAndHeader();
-
-			if( ext.equals("csv") || ext.equals("txt")) {
-	    		System.out.println("loading delimited");
-	    		dlbl.setText("Loading file...");
-
-				String delimiter = ",";
-				if( ext.equals("csv")) {
-					delimiter = ",";
-				} else
-				if( ext.equals("txt")) {
-					delimiter = "\t";
-				}
-				
-				FileReader fr = null;
-				try {
-					fr = new FileReader(f);
-				} catch (FileNotFoundException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-					for( VTD feat : featureCollection.features) {
-						for( int i = 0; i < dest_columns.length; i++) {
-							feat.properties.put(dest_columns[i],"0");
-						}
-					}
-					dlg.hide();
-					return;
-				}
-				BufferedReader br = new BufferedReader(fr);
-				
-				if( HAS_HEADER_ROW) {
-					try {
-						dh.header = br.readLine().split(delimiter);
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				} else {
-					dh.header = new String[source_columns.length+1];
-					dh.header[0] = "GEOID";
-					for( int i = 0; i < source_columns.length; i++) {
-						dh.header[i+1] = source_columns[i];
-					}
-				}
-				
-				//now select the columns
-	    		System.out.println("reading columns");
-				int col_geoid = -1;
-				int[] col_indexes = new int[source_columns.length];
-				for( int i = 0; i < dh.header.length; i++) {
-					String header = dh.header[i].toUpperCase().trim();
-					if( header.indexOf("GEOID") == 0 || header.indexOf("BLOCKID") == 0) {
-						col_geoid = i;
-					}
-					for( int j = 0; j < source_columns.length; j++) {
-						if( header.equals(source_columns[j])) {
-							col_indexes[j] = i;
-						}
-					}
-				}
-				if( col_geoid < 0) {
-					dlg.setVisible(false);
-		    		System.out.println("Required columns not found.");
-					if( Download.prompt) {
-						JOptionPane.showMessageDialog(mainframe, "Required columns not found.\nMissing geoid column.");
-					}
-					return;
-				}
-				
-	    		
-//read and put
-				System.out.println("Reading data...");
-				dlbl.setText("Reading data...");
-				
-				hits = 0;
-	    		misses = 0;
-	    		
-	    		try {
-					if( opt == MAJORITY) { //MAJORITY
-						//make properties in first feature
-    					for( int j = 0; j < dest_columns.length; j++) {
-    						featureCollection.features.get(0).properties.put((String)dest_columns[j],"");		
-    					}
-						//reset hash in all features
-    					for( VTD feat : featureCollection.features) {
-    						feat.properties.temp_hash.clear();
-    					}
-					} else {
-    					for( VTD feat : featureCollection.features) {
-							for( int i = 0; i < dest_columns.length; i++) {
-								feat.properties.put(dest_columns[i],"0");
-							}
-    					}
-					}
-
-				    String line;
-				    while ((line = br.readLine()) != null) {
-				    	try {
-					    	String[] ss = line.split(delimiter);
-					    	if( ss.length > dh.header.length) {
-					    		System.out.print("+"+(ss.length - dh.header.length));
-					    	}
-							VTD feat = hash_geoid_feat.get(ss[col_geoid]);
-							if( feat == null) {
-								misses++;
-					    		//System.out.println("miss "+dlon+","+dlat+" ");
-								continue;
-							}
-							hits++;
-							
-							if( hits % 100 == 0) {
-				    			System.out.print(".");
-				    		}
-				    		if( hits % (100*100) == 0) {
-				    			System.out.println(""+hits);
-				    		}
-							
-							String[] results = new String[dest_columns.length];
-							for( int i = 0; i < dest_columns.length; i++) {
-								results[i] = ss[col_indexes[i]].trim();
-							}
-
-							if( opt == MAJORITY) { //MAJORITY
-								String dist = ss[col_indexes[0]].trim();
-								Integer integer = feat.properties.temp_hash.get(dist);
-								if( integer == null) {
-									integer = 0;
-								}
-								integer++;
-								feat.properties.temp_hash.put(dist,integer);
-							} else if (opt == ACCUMULATE) { //accumulate
-								for( int i = 0; i < dest_columns.length; i++) {
-									try {
-										Double initial = Double.parseDouble(feat.properties.get(dest_columns[i]).toString());
-										initial += Double.parseDouble(results[i].replaceAll(",","").replaceAll("\\+",""));
-										feat.properties.put(dest_columns[i],""+initial);
-									} catch (Exception ex) { ex.printStackTrace(); } 
-								}
-							}
-				    		
-						} catch (Exception e) {
-							// TODO Auto-generated catch ward
-							e.printStackTrace();
-						}
-				    }
-					
-					//note majority vote is only handling 1 column right now!
-					String key = ((String)dest_columns[0]).trim().toUpperCase();
-					if( opt == MAJORITY) { //MAJORITY
-						Vector<VTD> missed = new Vector<VTD>();
-						for( int i = 0; i < featureCollection.vtds.size(); i++) {
-							missed.add(featureCollection.vtds.get(i));
-						}
-						
-						Vector<VTD> missing = new Vector<VTD>();
-						for( VTD feat : featureCollection.features) {
-							if( feat.properties.temp_hash.size() == 0) {
-								System.out.println("no values! "+key);
-								missing.add(feat);
-								feat.properties.put(key,"");
-								continue;
-							}
-							String max = "";
-							int max_count = 0;
-							for( Entry<String,Integer> entry : feat.properties.temp_hash.entrySet()) {
-								System.out.println(""+feat.properties.get("GEOID10")+": "+entry.getKey()+": "+entry.getValue());
-								if( entry.getValue() > max_count) {
-									if( max.equals("0") && one_indexed) {
-										continue;
-									}
-									max_count = entry.getValue();
-									max = entry.getKey();
-								}
-							}
-							if( one_indexed) {
-								max = ""+(Integer.parseInt(max)-1);
-							}
-    						feat.properties.put(key,max);
-						}
-						
-						//fill in empties with neighbors
-						Hashtable<String,Integer> counts = new Hashtable<String,Integer>();
-						int l = 0;
-						System.out.println(""+missing.size()+" missing");
-						while (l < 5 && missing.size() > 0) {
-							System.out.println(""+missing.size()+" missing");
-							for( int k = 0; k < missing.size(); k++) {
-								VTD feat = missing.get(k);
-								counts.clear();
-								for(VTD vtd : feat.neighbors) {
-									String p = vtd.feature.properties.get(key).toString();
-									Integer i = counts.get(p);
-									if( i == null) {
-										i = new Integer(0);
-										counts.put(p, i);
-									}
-									i++;
-								}
-								String best = "";
-								int max = 0;
-								if( counts.entrySet().size() == 0) {
-									System.out.println("no neighbors found! "+l);
-								} else {
-									missing.remove(feat);
-									k--;
-									for( Entry<String,Integer> entries : counts.entrySet()) {
-										if( entries.getValue() > max) {
-											max = entries.getValue();
-											best = entries.getKey();
-										}
-									}
-									feat.properties.put(key,best);
-								}
-							}
-							l++;
-						}
-					}
-
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-				
-//finish up
-				try {
-					br.close();
-					fr.close();
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-	    		dlbl.setText("Finalizing...");
-				
-				
-				project.district_column = (String) comboBoxDistrictColumn.getSelectedItem();
-				project.population_column = (String) comboBoxPopulation.getSelectedItem();
-				fillComboBoxes();
-				mapPanel.invalidate();
-				mapPanel.repaint();
-				
-	    		dlg.setVisible(false);
-
-				if(Download.prompt) {
-					JOptionPane.showMessageDialog(mainframe,"Done importing data.\nHits: "+hits+"\nMisses: "+misses);
-				}
-	    		System.out.println("done");
-
-				return;
-				
-			}
-	}
-	
-	//more than 1 party above the vote threshold (as %) is counted as contested.  (original had it at 2%)
-	public void imputeUncontestedFeatures( Vector<String> election_columns, Vector<String> substitute_columns, double vote_threshold) {
-		if( election_columns.size() != substitute_columns.size()) {
-			return;
-		}
-		
-		//find contested and uncontested
-		Vector<VTD> contested_vtds = new Vector<VTD>();
-		Vector<VTD> uncontested_vtds = new Vector<VTD>();
-		for( VTD f : featureCollection.features) {
-
-			double tot = 0;
-			for( String s : election_columns) {
-				try {
-					tot += Double.parseDouble(f.properties.get(s).toString());
-				} catch (Exception ex) {}
-			}
-
-			int nonzeros = 0;
-			for( String s : election_columns) {
-				try {
-					double val = Double.parseDouble(f.properties.get(s).toString());
-					if( val > vote_threshold*tot) {
-						nonzeros++;
-					}
-				} catch (Exception ex) {}
-			}
-			if( nonzeros > 1) {
-				contested_vtds.add(f);
-			} else {
-				uncontested_vtds.add(f);
-			}
-		}
-		
-		//find the total vote counts for contested races
-		double[] election_sums = new double[election_columns.size()];
-		double[] substitute_sums = new double[election_columns.size()];
-		for( int i = 0; i < election_sums.length; i++) {
-			election_sums[i] = 0;
-			substitute_sums[i] = 0;
-		}
-		for( VTD f : contested_vtds) {
-			for( int i = 0; i < election_sums.length; i++) {
-				try {
-					election_sums[i] += Double.parseDouble(f.properties.get(election_columns.get(i)).toString());
-				} catch (Exception ex) {}
-				try {
-					election_sums[i] += Double.parseDouble(f.properties.get(substitute_columns.get(i)).toString());
-				} catch (Exception ex) {}
-			}
-		}
-
-		//now find the ratio for that for election vs substitute columns
-		for( int i = 0; i < election_sums.length; i++) {
-			election_sums[i] = substitute_sums[i] == 0 ? 0 : election_sums[i] / substitute_sums[i];
-		}
-		
-		//now fill in uncontested, adjusted by vote ratio of contested.
-		for( VTD f : uncontested_vtds) {
-			for( int i = 0; i < election_sums.length; i++) {
-				try {
-					double val = Double.parseDouble(f.properties.get(substitute_columns.get(i)).toString())*election_sums[i];
-					f.properties.put(election_columns.get(i),""+val);
-				} catch (Exception ex) {}
-			}
-		}
-	}
-		
-		
-	//more than 1 party above the vote threshold (as %) is counted as contested.  (original had it at 2%)
-	public void imputeUncontestedDistricts( Vector<String> election_columns, Vector<String> substitute_columns, String district_column, double vote_threshold) {
-		if( election_columns.size() != substitute_columns.size()) {
-			return;
-		}
-		
-		//accumulate by district
-		Hashtable<String,double[]> district_election_sums = new Hashtable<String,double[]>();
-		for( VTD f : featureCollection.features) {
-		
-			//get or create district in hashtable
-			String key = f.properties.get(district_column).toString();
-			double[] dd = district_election_sums.get(key);
-			if( dd == null) {
-				dd = new double[election_columns.size()];
-				for( int i = 0; i < dd.length; i++) {
-					dd[i] = 0;
-				}
-				district_election_sums.put(key,dd);
-			}
-		
-			//accumulate
-			for( int i = 0; i < election_columns.size(); i++) {
-				try {
-					dd[i] += Double.parseDouble(f.properties.get(election_columns.get(i)).toString());
-				} catch (Exception ex) {}
-			}
-		}
-
-		//find contested and uncontested
-		Vector<VTD> contested_vtds = new Vector<VTD>();
-		Vector<VTD> uncontested_vtds = new Vector<VTD>();
-		for( VTD f : featureCollection.features) {
-			String key = f.properties.get(district_column).toString();
-			double[] dd = district_election_sums.get(key);
-
-			double tot = 0;
-			for( int i = 0; i < dd.length; i++) {
-				tot += dd[i];
-			}
-
-			int nonzeros = 0;
-			for( int i = 0; i < dd.length; i++) {
-				if( dd[i] > vote_threshold*tot) {
-					nonzeros++;
-				}
-			}
-			if( nonzeros > 1) {
-				contested_vtds.add(f);
-			} else {
-				uncontested_vtds.add(f);
-			}
-		}
-
-		
-		//find the total vote counts for contested races
-		double[] election_sums = new double[election_columns.size()];
-		double[] substitute_sums = new double[election_columns.size()];
-		for( int i = 0; i < election_sums.length; i++) {
-			election_sums[i] = 0;
-			substitute_sums[i] = 0;
-		}
-		for( VTD f : contested_vtds) {
-			for( int i = 0; i < election_sums.length; i++) {
-				try {
-					election_sums[i] += Double.parseDouble(f.properties.get(election_columns.get(i)).toString());
-				} catch (Exception ex) {}
-				try {
-					election_sums[i] += Double.parseDouble(f.properties.get(substitute_columns.get(i)).toString());
-				} catch (Exception ex) {}
-			}
-		}
-
-		//now find the ratio for that for election vs substitute columns
-		for( int i = 0; i < election_sums.length; i++) {
-			election_sums[i] = substitute_sums[i] == 0 ? 0 : election_sums[i] / substitute_sums[i];
-		}
-		
-		//now fill in uncontested, adjusted by vote ratio of contested.
-		for( VTD f : uncontested_vtds) {
-			for( int i = 0; i < election_sums.length; i++) {
-				try {
-					double val = Double.parseDouble(f.properties.get(substitute_columns.get(i)).toString())*election_sums[i];
-					f.properties.put(election_columns.get(i),""+val);
-				} catch (Exception ex) {}
-			}
-		}
-	}
-	
-	public void importURL(String url, String fk, String pk, String[] cols) {
-		try {
-		String s0 = "IMPORT URL "+url+" "+fk+" "+pk;
-		for( int i = 0; i < cols.length; i++) {
-			s0 += " "+cols[i];
-		}
-		ip.addHistory(s0);
-		
-		System.out.println("0: ");
-		String[] dots = url.split("\\.");
-		System.out.println("1: ");
-		String ext = ""+dots[dots.length-1].toLowerCase();
-		System.out.println("2: ");
-
-		String dest_path = Download.getStartPath();
-		String dest_name = "temp."+ext;
-		System.out.println("download: ");
-		System.out.println(url);
-		System.out.println(dest_path);
-		System.out.println(dest_name);
-		try {
-			if( !Download.download(url,dest_path,dest_name)) {
-				System.out.println("failed to download "+url+"!");
-				return;
-			}
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			System.out.println("failed to download "+url+"!");
-			return;
-		}
-		
-		File fi = new File(dest_path+dest_name);
-
-		String fn = fi.getName();
-		System.out.println("file: "+fn);
-		DataAndHeader dh = null;
-		if( ext.equals("csv")) {
-			String s = getFile(fi).toString();
-			dh = readDelimited(s,",",true);
-		} else
-		if( ext.equals("txt") || ext.equals("tsv")) {
-			String s = getFile(fi).toString();
-			dh = readDelimited(s,"\t",true);
-		} else
-		if( ext.equals("dbf")) {
-			String s = getFile(fi).toString();
-			dh = readDBF(fi.getAbsolutePath());
-		}
-		System.out.println("read "+dh.data.length+" rows");
-		int fk_index = -1;
-		for( int i = 0; i < dh.header.length; i++) {
-			if( dh.header[i].equals(fk)) {
-				fk_index = i;
-				break;
-			}
-		}
-		int[] col_indices;
-		if( cols == null) {
-			cols = dh.header;
-		}
-		
-		col_indices	= new int[cols.length];
-		for( int i = 0; i < cols.length; i++) {
-			col_indices[i] = -1;
-			for( int j = 0; j < dh.header.length; j++) {
-				if( dh.header[j].equals(cols[i])) {
-					col_indices[i] = j;
-					break;
+		for( int i = 0; i < elect.length; i++) {
+			for( int j = 0; j < headers.length; j++) {
+				if( headers[j].equals(elect[i])) {
+					project.demographic_columns.add(elect[i]);
 				}
 			}
 		}
-		
-		for( VTD f : featureCollection.features) {
-			f.temp_bool = false;
-		}	
-		
-		Hashtable<String,VTD> hmmap = new Hashtable<String,VTD>();
-		for( VTD f : featureCollection.features) {
-			hmmap.put(f.properties.get(pk).toString(), f);
-		}
-		
-		for( int i = 0; i < dh.data.length; i++) {
-			try {
-				if( i % 10 == 0) {
-					System.out.print(".");
-				}
-				if( i % (100 * 10) == 0) {
-					System.out.println(""+i);
-				}
-				String key = dh.data[i][fk_index];
-				if( !hmmap.containsKey(key)) {
-					key = "0"+key;
-				}
-				if( hmmap.containsKey(key)) {
-					VTD f = hmmap.get(key);
-					if( f == null) {
-						System.out.println("f is null!");
-					}
-					f.temp_bool = true;
-					for( int j = 0; j < cols.length; j++) {
-						f.properties.put(cols[j], dh.data[i][col_indices[j]]);
-					}
-				} else {
-					System.out.println("key not found "+dh.data[i][fk_index]);
-					
-				}
-			} catch (Exception ex) {
-				System.out.println("ex "+ex);
-				ex.printStackTrace();
-			}
-		}
 
-		project.district_column = (String) comboBoxDistrictColumn.getSelectedItem();
-		project.population_column = (String) comboBoxPopulation.getSelectedItem();
-		
-		fillComboBoxes();
-		
-		hushcomboBoxPopulation = true;
-		comboBoxPopulation.setSelectedItem("");
-		hushcomboBoxPopulation = false;
-		comboBoxPopulation.setSelectedItem(project.population_column);
-		
+		setDemographicColumns();
 		setElectionColumns();
-
-		hushcomboBoxDistrict = true;
-		comboBoxDistrictColumn.setSelectedItem("");
-		hushcomboBoxDistrict = false;
-		comboBoxDistrictColumn.setSelectedItem(project.district_column);
-		
-		mapPanel.invalidate();
-		mapPanel.repaint();
-		} catch (Exception ex) {
-			System.out.println("ex "+ex);
-			ex.printStackTrace();
-		}
+		setElectionColumns2();
+		setElectionColumns3();
+		setSubstituteColumns();
 	}
 
-	public void impute(String[] ss) {
-		String s = "IMPUTE";
-		project.substitute_columns.clear();
-		for( int i = 0; i < ss.length; i++) {
-			project.substitute_columns.add(ss[i]);
-			s += " "+ss[i];
-		}
-		ip.addHistory(s);
-		setSubstituteColumns();		
-	}
+
+
+	
 }
-
-

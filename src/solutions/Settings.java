@@ -1,22 +1,17 @@
 package solutions;
 
-import geography.VTD;
-
 import java.util.Vector;
 
 import serialization.JSONObject;
 import ui.MainFrame;
 
 public class Settings extends serialization.ReflectionJSONObject<Settings> {
-	
-	public static boolean paretoMode = false;
-	public static boolean national_map = false;
 	public static double uncontested_threshold = 0.02;
 	public static int num_maps_to_draw = 1;
 	public static boolean use_annealing_floor = true;
 	public static int RANK = 0;
 	public static int EMA = 1;
-	public static int NORMALIZE_MODE = RANK;
+	public static int LINEARIZE_MODE = RANK;
 	public static int TRUNCATION_SELECTION = 0;
 	public static int ROULETTE_SELECTION = 1;
 	public static int RANK_SELECTION = 2;
@@ -43,7 +38,6 @@ public class Settings extends serialization.ReflectionJSONObject<Settings> {
 
 	// public static boolean border_length_area_weighted = true;
 	public static final boolean make_unique = false; // not the cost of this is
-	public static final double density_multiplier = 2.522667664609363E11/(double)1000000.0;
 														// population times
 														// population times
 														// precinct count.
@@ -55,14 +49,14 @@ public class Settings extends serialization.ReflectionJSONObject<Settings> {
 			return seats_number_per_district;
 		} else {
 			int test = 0;
-			//System.out.println("seats_number_total: "+seats_number_total+" looking for district: "+n);
+			//System.out.println("seats_number_total: "+seats_number_total);
 			int[] sc = getSeatDistribution(seats_number_total);
 			for(int i = sc.length-1; i > 0; i--) {
 				test += sc[i];
-				//System.out.println("n: "+n+" i: "+i+" sc[i]: "+sc[i]+" test: "+test+" n: "+n);
+				//System.out.println("i: "+i+" sc[i]: "+sc[i]+" test: "+test+" n: "+n);
 				if( n < test) {
 					//System.out.println(" seats_in_district test: "+test+" "+n+": "+i);
-					return i;//sc[i];
+					return i;
 				}
 			}
 			//System.out.println(" seats_in_district fall "+seats_number_total+" "+test+" "+n+" : 1");
@@ -111,7 +105,7 @@ public class Settings extends serialization.ReflectionJSONObject<Settings> {
 		return getAnnealingFloor(generation)*1.2;
 	}
 	public static double getAnnealingPerGeneration() {
-		double e = Math.exp(-0.0010 * anneal_rate ); // reaches
+		double e = Math.exp(-0.0006 * anneal_rate ); // reaches
 		return e;
 	}
 	public static double getAnnealingFloor(long generation) {
@@ -204,7 +198,7 @@ public class Settings extends serialization.ReflectionJSONObject<Settings> {
 
 	public static double mutation_rate = 0.5;
 	public static double mutation_boundary_rate = 0.5;
-	public static int population = 200;
+	public static int population = 100;
 	public static int num_elections_simulated = 1;
 	public static int num_districts = 4;
 	// geometry
@@ -213,8 +207,8 @@ public class Settings extends serialization.ReflectionJSONObject<Settings> {
 	// map_population (folder)
 	//
 	public static int num_ward_outcomes = 16;
-	public static double elite_fraction = 0.33;
-	public static double unpaired_edge_length_weight = 0.75;
+	public static double elite_fraction = 0.25;
+	public static double unpaired_edge_length_weight = 0.5;
 	public static boolean ignore_uncontested = false;
 	public static boolean substitute_uncontested = false;
 	public static boolean reduce_splits;
@@ -228,11 +222,9 @@ public class Settings extends serialization.ReflectionJSONObject<Settings> {
 
 	public static void setMutationRate(double i) {
 		Settings.mutation_boundary_rate = i;
-		hush_mutate_rate = true;
 		for (iChangeListener c : mutation_rateChangeListeners) {
 			c.valueChanged();
 		}
-		hush_mutate_rate = false;
 	}
 	public static int[] getSeatDistribution_cached = null;
 	public static int getSeatDistribution_last_seats = -1;
@@ -244,15 +236,6 @@ public class Settings extends serialization.ReflectionJSONObject<Settings> {
 	public static double elite_mutate_fraction = 1;
 	public static double exp_mutate_factor = 10.0;
 	public static boolean minimize_absolute_deviation = false;
-	public static boolean hush_mutate_rate = false;
-	public static double fv_pvi_adjust = -0.0385;
-	public static int QUOTA_METHOD_DROOP = 1;
-	public static int QUOTA_METHOD_HARE = 2;
-	public static int quota_method = QUOTA_METHOD_DROOP;
-	public static double descr_rep_weight;
-	public static boolean divide_packing_by_area = true;
-	public static boolean prefer4s = false;
-	public static boolean recombination_on = true;
 	public static void setNo4s(boolean b) {
 		if( no4s == b) {
 			return;
@@ -261,20 +244,12 @@ public class Settings extends serialization.ReflectionJSONObject<Settings> {
 		getSeatDistribution_last_seats = -1;
 	}
 	public static int[] getSeatDistribution(int seats) {
-		if( seats == 7) {
-			return new int[]{0,0,0,1,1,0};
-		}
-		if( seats <= 5) {
-			int[] iseats =  new int[]{0,0,0,0,0,0};
-			iseats[seats] = 1;
-			return iseats;
-		}
 		if( seats != getSeatDistribution_last_seats) {
 			int sm5 = seats % 5;
 			int s5 = (seats-sm5) / 5;
 			int s4 = 0;
 			int s3 = 0;
-			if( (no4s && seats != 7) || (true && seats != 7)) {
+			if( no4s) {
 				switch( sm5) {
 				case 0:
 					s5 -= 0;
@@ -326,13 +301,6 @@ public class Settings extends serialization.ReflectionJSONObject<Settings> {
 					break;
 				}				
 			}
-			if( prefer4s ) {
-				if( s5 > 0 && s3 > 0) {
-					s5--;
-					s3--;
-					s4+=2;
-				}
-			}
 			int tot = s5+s4+s3;
 			int totseat = s5*5+s4*4+s3*3;
 			getSeatDistribution_cached = new int[]{0,0,0,s3,s4,s5};
@@ -340,15 +308,5 @@ public class Settings extends serialization.ReflectionJSONObject<Settings> {
 			//System.out.println("s5: "+s5+" s4: "+s4+" s3: "+s3+" tot: "+tot+" totseat: "+totseat);
 		}
 		return getSeatDistribution_cached;
-	}
-	public static void setNationalMap(boolean national) {
-		national_map = national;
-		MainFrame.mainframe.getMinMaxXY();
-		MainFrame.mainframe.resetZoom();
-		for( VTD f : MainFrame.mainframe.featureCollection.features) {
-			f.geometry.makePolys();
-		}
-		MainFrame.mainframe.mapPanel.invalidate();
-		MainFrame.mainframe.mapPanel.repaint();
 	}
 }

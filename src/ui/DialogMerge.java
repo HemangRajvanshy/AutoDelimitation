@@ -1,5 +1,5 @@
 package ui;
-import geography.VTD;
+import geography.Feature;
 import geography.FeatureCollection;
 import geography.Properties;
 
@@ -148,14 +148,14 @@ public class DialogMerge extends JDialog {
 				System.out.println("map_data.length "+map_data.length);
 				System.out.println("data.length "+data.length);
 
-				HashMap<String,VTD> hmmap = new HashMap<String,VTD>();
+				HashMap<String,Feature> hmmap = new HashMap<String,Feature>();
 				for( int i = 0; i < map_data.length; i++) {
 					hmmap.put(map_data[i][map_index], fc.features.get(i));
 				}
 				System.out.println("hmap.size "+hmmap.size());
 				System.out.println("data_headers.length "+data_headers.length);
-				for( VTD f : fc.features) {
-					f.temp_bool = false;
+				for( Feature f : fc.features) {
+					f.vtd.temp_bool = false;
 				}
 				for( int i = 0; i < data.length; i++) {
 					try {
@@ -166,7 +166,7 @@ public class DialogMerge extends JDialog {
 							System.out.println(""+i);
 						}
 						if( hmmap.containsKey(data[i][file_index])) {
-							VTD f = hmmap.get(data[i][file_index]);
+							Feature f = hmmap.get(data[i][file_index]);
 							if( f == null) {
 								System.out.println("f is null!");
 							}
@@ -181,7 +181,7 @@ public class DialogMerge extends JDialog {
 								}
 							} catch (Exception ex) { }
 							*/
-							f.temp_bool = true;
+							f.vtd.temp_bool = true;
 							for( int j = 0; j < data_headers.length; j++) {
 								f.properties.put(data_headers[j], data[i][j]);
 							}
@@ -194,13 +194,13 @@ public class DialogMerge extends JDialog {
 						ex.printStackTrace();
 					}
 				}
-				for( VTD f : fc.features) {
-					if( f.temp_bool == false) {
+				for( Feature f : fc.features) {
+					if( f.vtd.temp_bool == false) {
 						for( int j = 0; j < data_headers.length; j++) {
 							f.properties.put(data_headers[j], "0");
 						}
 					} else {
-						f.temp_bool = false;
+						f.vtd.temp_bool = false;
 					}
 				}
 				

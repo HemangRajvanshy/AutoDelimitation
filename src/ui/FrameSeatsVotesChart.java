@@ -272,19 +272,11 @@ public class FrameSeatsVotesChart extends JFrame {
 			    g.drawLine(100*iFSAA,100*iFSAA, scale(100+(int)(wang*200))*iFSAA, 100*iFSAA);
 			    */
 			    g.setColor(Color.BLACK);
-			    if( grofman < 0) {
-			    	g.fillRect(99*iFSAA,(100+(int)Math.round(grofman*200))*iFSAA, 3, ((int)Math.round(-grofman*200))*iFSAA);
-			    } else {
-			    	g.fillRect(99*iFSAA,100*iFSAA, 3, ((int)Math.round(grofman*200))*iFSAA);			    	
-			    }
+			    g.fillRect(99*iFSAA,100*iFSAA, 3, ((int)Math.round(grofman*200))*iFSAA);
 			    
 			    //draw wang
 			    g.setColor(Color.BLACK);
-			    if( wang < 0) {
-			    	g.fillRect((100+scale_width(wang*200.0))*iFSAA,99*iFSAA, scale_width(-wang*200.0)*iFSAA, 3);
-			    } else {
-			    	g.fillRect(100*iFSAA,99*iFSAA, scale_width(wang*200.0)*iFSAA, 3);
-			    }
+			    g.fillRect(100*iFSAA,99*iFSAA, scale_width(wang*200.0)*iFSAA, 3);
 
 			    
 		        graphics.drawImage(off_Image,
@@ -436,33 +428,14 @@ public class FrameSeatsVotesChart extends JFrame {
 		dm.calcSeatsVotesCurve();
 		double d = dm.calcSeatsVoteAsymmetry();
 		seats_votes = dm.seats_votes;
-		if( seats_votes.size() ==0) {
-			return;
-		}
 		
 		double min = 1;
 		double median = 0.5;
-		double below_x = 0;
-		double above_x = 0;
-		double below_y = 0;
-		double above_y = 0;
 		//now set the table
 		String[][] sd = new String[seats_votes.size()][2];
 		for( int i = 0; i < sd.length; i++) {
 			double[] dd = seats_votes.get(i);
-			sd[i] = new String[]{""+dd[0],""+dd[1]}; //0=y, 1=x
-			if( dd[0] < 0.5) {
-				if( Math.abs(dd[0]-0.5) < Math.abs(below_y-0.5)) {
-					below_y = dd[0];
-					below_x = dd[1];
-				}
-			}
-			if( dd[0] > 0.5) {
-				if( Math.abs(dd[0]-0.5) < Math.abs(above_y-0.5)) {
-					above_y = dd[0];
-					above_x = dd[1];
-				}
-			}
+			sd[i] = new String[]{""+dd[0],""+dd[1]};
 			if( Math.abs(dd[0]-0.5) < min) {
 				min = Math.abs(dd[0]-0.5);
 				median = dd[1];
@@ -470,17 +443,12 @@ public class FrameSeatsVotesChart extends JFrame {
 				median = (median + dd[1])/2.0;
 			}
 		}
-		double dx = above_x-below_x;
-		double dy = above_y-below_y;
-		
-		double move_y_frac = (0.5-below_y)/dy;
-		median = below_x + move_y_frac*dx;
 		try {
 			
 			DecimalFormat decimal = new DecimalFormat("#0.00000");
 			baasTF.setText(decimal.format(d));
 			double[] mid = seats_votes.get(seats_votes.size()/2);
-			wang = 0;//median-0.5;
+			wang = median-0.5;
 			grofman = 0.5-mid[0];
 
 			grofmanTF.setText(decimal.format(grofman));

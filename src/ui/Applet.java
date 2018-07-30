@@ -1,35 +1,28 @@
 package ui;
 
 import java.awt.Desktop;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.net.URI;
 
 import javax.swing.*;
 
-import util.Gaussian;
-import util.StaticFunctions;
+import solutions.Gaussian;
+import solutions.StaticFunctions;
 
+		
+/*
+ * 
+ * convert shapefile to geojson:
+ * for %f in (*.shp) do ogr2ogr -f "GeoJSON" "%~dpnf.json" "%f"
+ */
 
 
 public class Applet extends JApplet {
-	public static MainFrame mainFrame = null;
 	public static String open_project = null;
-	public static  String[] args = null;
-
-    public static void main( String[] _args )
+	
+    public static void main( String[] args )
 	{
-		args = _args;
-    	new Applet();
-	}
-	public static void deleteRecursive(File f)  {
-		System.out.println("deleting "+f.getAbsolutePath());
-	  if (f.isDirectory()) {
-	    for (File c : f.listFiles())
-	      deleteRecursive(c);
-	  }
-	  f.delete();
+		new Applet();
 	}
 
     public Applet() {
@@ -52,13 +45,7 @@ public class Applet extends JApplet {
     	System.out.println(""+Gaussian.binomial_as_normal(1001, 500, 0.55));
 
 
-    	mainFrame = new MainFrame();
-    	for( int i = 0; i < args.length-1; i++) {
-	    	if( args[i].equals("run")) {
-				mainFrame.ip.queueInstructionsFromFile(args[i+1]);
-	    	}
-    	}
-
+    	MainFrame mainFrame = new MainFrame();
     	mainFrame.show();
     }
 

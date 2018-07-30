@@ -1,11 +1,10 @@
 package solutions;
-import geography.*;
+import geography.FeatureCollection;
 
 import java.util.*;
 
 import serialization.JSONObject;
 import ui.MainFrame;
-import util.Pair;
 
 public class District extends JSONObject {
     Vector<VTD> vtds = new Vector<VTD>();
@@ -341,25 +340,6 @@ public class District extends JSONObject {
         	return outcomes;
     	}
     }
-    public double[] getElectionOutcome(int election) {
-        double[] district_vote = new double[Settings.num_candidates]; //inited to 0
-        if( vtds.size() == 0) {
-            for( int i = 0; i < district_vote.length; i++) {//most_value) {
-                district_vote[i] = 0;
-            }
-            return district_vote;
-        }
-        for( int j = 0; j < vtds.size(); j++) {
-        	VTD vtd = vtds.get(j);
-            double[] vtd_vote = vtd.getElectionOutcome(election);
-            if( vtd_vote != null) {
-                for( int i = 0; i < vtd_vote.length; i++) {//most_value) {
-                    district_vote[i] += vtd_vote[i];
-                }
-            }
-        }
-        return district_vote;
-    }
     
     public double[] getAnOutcome() {
         double[] district_vote = new double[Settings.num_candidates]; //inited to 0
@@ -369,8 +349,7 @@ public class District extends JSONObject {
             }
             return district_vote;
         }
-        for( int j = 0; j < vtds.size(); j++) {
-        	VTD vtd = vtds.get(j);
+        for( VTD vtd : vtds) {
             double[] vtd_vote = vtd.getOutcome();
             if( vtd_vote != null) {
                 for( int i = 0; i < vtd_vote.length; i++) {//most_value) {
@@ -390,9 +369,8 @@ public class District extends JSONObject {
             }
             return new double[][]{district_vote,district_vote};
         }
-        for( int j = 0; j < vtds.size(); j++) {
-        	VTD vtd = vtds.get(j);
-            double[] ward_vote = vtd.getOutcome();
+        for( VTD ward : vtds) {
+            double[] ward_vote = ward.getOutcome();
             if( ward_vote != null) {
             	double tot = 0;
                 for( int i = 0; i < ward_vote.length; i++) {
@@ -402,7 +380,7 @@ public class District extends JSONObject {
                 if( tot == 0) {
                 	tot = 0;
                 } else {
-                	tot = vtd.population/tot;
+                	tot = ward.population/tot;
                 }
                 
                 for( int i = 0; i < ward_vote.length; i++) {
@@ -518,166 +496,7 @@ public class District extends JSONObject {
 		return null;
 	}
 
-	public static double[] popular_vote_to_elected(double[] ds, int i, double pop_per_seat_wrong) {
-		return popular_vote_to_elected_for_seats(
-				ds, (int)Settings.seats_in_district(i),pop_per_seat_wrong,
-				Settings.quota_method == Settings.QUOTA_METHOD_DROOP);
-		/*
-		if( Settings.quota_method == Settings.QUOTA_METHOD_DROOP) {
-			return popular_vote_to_elected_droop(ds,i, pop_per_seat_wrong);
-		} else {
-			return popular_vote_to_elected_hare(ds,i, pop_per_seat_wrong);
-			
-		}
-		*/
-	}
-	/*
-	public static double[] popular_vote_to_elected_hare(double[] ds, int i, double pop_per_seat_wrong) {
-		return popular_vote_to_elected_for_seats(ds, Settings.seats_in_district(i),  pop_per_seat_wrong,false);
-	}*/
-	public static double[] popular_vote_to_elected_for_seats(double[] ds, int seats, double pop_per_seat_wrong, boolean droop) {
-		double[] res = new double[ds.length];
-		for( int j = 0; j < res.length; j++) {
-			res[j] = 0;
-		}
-
-		double totvote = 0;
-		for( int j = 0; j < ds.length; j++) {
-			totvote += ds[j];
-		}
-		if( totvote <= 0) {
-			return ds;
-		}
-		double unit = totvote / (seats + (droop ? 1 : 0));
-		if( unit == 0) {
-			unit = 1;
-		}
-		if( pop_per_seat_wrong > 0 && pop_per_seat_wrong > unit) {
-			unit = pop_per_seat_wrong;
-		}
-
-		int seats_left = seats;
-		for( int j = 0; j < ds.length; j++) {
-			double mod = ds[j];
-			while( mod >= unit) {
-				res[j]++;
-				seats_left--;
-				mod -= unit;
-			}
-		}			
-
-		while( seats_left > 0) {
-			int n = -1;
-			double max = -1;
-			for( int j = 0; j < ds.length; j++) {
-				if( n < 0 || ds[j]-unit*res[j] > max) {
-					n = j;
-					max = ds[j]-unit*res[j];
-				}
-			}
-			if( max > 0) {
-				res[n]++;
-			} else {
-				break;
-			}
-			seats_left--;
-		}
-		return res;
-	}
-	
-
-	public static double[] popular_vote_to_elected_droop_old(double[] ds, int i) {
-		double pct_d = ds[0]/(ds[0]+ds[1]);
-		double seats = Settings.seats_in_district(i);
-		double safe_d = Math.floor((pct_d)*(seats+1.0));
-		double safe_r = Math.floor((1.0-pct_d)*(seats+1.0));
-		//System.out.println(" seats "+seats+" sd "+safe_d+" sr "+safe_r);
-		if( safe_d+safe_r > seats) {
-			if( safe_d > safe_r) {
-				safe_d--;
-			} else {
-				safe_r--;
-			}
-		}
-		if( safe_d+safe_r == seats) {
-			return new double[]{safe_d,safe_r};
-		}
-		double reaminder_d = pct_d-safe_d*(1/(seats+1.0));
-		double reaminder_r = (1-pct_d)-safe_r*(1/(seats+1.0));
-
-		if( reaminder_d > reaminder_r) {
-			safe_d++;
-		} else {
-			safe_r++;
-		}
-		/*
-		double threshold_d = Math.round((seats+1)*pct_d)/(seats+1);
-		double remainder_d = pct_d-threshold_d;
-		
-		if( remainder_d < 0) {
-			safe_d++;
-		}
-
-		double safe_r = seats - safe_d;
-		*/
-
-		return new double[]{safe_d,safe_r};
-	}
-/*
-	public static double[] popular_vote_to_elected_droop(double[] ds, int i, double pop_per_seat_wrong) {
-		double[] res = new double[ds.length];
-		for( int j = 0; j < res.length; j++) {
-			res[j] = 0;
-		}
-
-		double totvote = 0;
-		for( int j = 0; j < ds.length; j++) {
-			totvote += ds[j];
-		}
-		if( totvote <= 0) {
-			return ds;
-		}
-		double unit = totvote / (Settings.seats_in_district(i)+1);
-		if( unit == 0) {
-			unit = 1;
-		}
-		if( pop_per_seat_wrong > 0 && pop_per_seat_wrong > unit) {
-			unit = pop_per_seat_wrong;
-		}
-
-		int seats_left = Settings.seats_in_district(i);
-		for( int j = 0; j < ds.length; j++) {
-			double mod = ds[j];
-			while( mod >= unit) {
-				res[j]++;
-				seats_left--;
-				mod -= unit;
-			}
-		}			
-
-		int n = -1;
-		double max = -1;
-		if( seats_left > 0) {
-	
-			for( int j = 0; j < ds.length; j++) {
-				if( n < 0 || ds[j]-unit*res[j] > max) {
-					n = j;
-					max = ds[j]-unit*res[j];
-				}
-			}
-			if( max > 0) {
-				res[n]++;
-			}
-		}
-		return res;
-	}
-	*/
-	
-	//need to use what pop per seat _should_ be otherwise this fights the population balance criteria.
-	public static double[] votes_needed_for_another_seat(double[] ds, int i, double pop_per_seat_wrong) {
-		if( Settings.quota_method == Settings.QUOTA_METHOD_DROOP) {
-			return votes_needed_for_another_seat_droop(ds,i,  pop_per_seat_wrong);
-		}
+	public static double[] popular_vote_to_elected(double[] ds, int i) {
 		double[] res = new double[ds.length];
 		for( int j = 0; j < res.length; j++) {
 			res[j] = 0;
@@ -694,52 +513,29 @@ public class District extends JSONObject {
 		if( unit == 0) {
 			unit = 1;
 		}
-		if( pop_per_seat_wrong > 0 && pop_per_seat_wrong > unit) {
-			unit = pop_per_seat_wrong;
-		}
-		int seats_left = Settings.seats_in_district(i);
 		for( int j = 0; j < ds.length; j++) {
 			double mod = ds[j];
 			while( mod >= unit) {
 				res[j]++;
-				seats_left--;
 				mod -= unit;
 			}
 		}			
 
 		int n = -1;
-		double max = unit;
-		if( seats_left > 0) {
-			for( int j = 0; j < ds.length; j++) {
-				if( n < 0 || ds[j]-unit*res[j] > max) {
-					n = j;
-					max = ds[j]-unit*res[j];
-				}
-			}
-			if( max > 0) {
-				res[n]++;
+		double max = -1;
+		for( int j = 0; j < ds.length; j++) {
+			if( n < 0 || ds[j]-unit*res[j] > max) {
+				n = j;
+				max = ds[j]-unit*res[j];
 			}
 		}
-		
-		double[] rem = new double[ds.length];
-		for( int j = 0; j < res.length; j++) {
-			rem[j] = max - (ds[j]-unit*res[j]);
+		if( max > 0) {
+			res[n]++;
 		}
-		if( n >= 0) {
-			rem[n] = unit;
-		}
-		return rem;
-	}
-	
-	public static void log(String s) {
-		System.out.print(s);
-	}	
-	public static void logn(String s) {
-		System.out.println(s);
+		return res;
 	}
 
-	//need to use what pop per seat _should_ be otherwise this fights the population balance criteria.
-	public static double[] votes_needed_for_another_seat_droop(double[] ds, int i, double pop_per_seat_wrong) {
+	public static double[] popular_vote_to_FV_stats(double[] ds, int i) {
 		double[] res = new double[ds.length];
 		for( int j = 0; j < res.length; j++) {
 			res[j] = 0;
@@ -756,45 +552,26 @@ public class District extends JSONObject {
 		if( unit == 0) {
 			unit = 1;
 		}
-		if( pop_per_seat_wrong > 0 && pop_per_seat_wrong > unit ) {
-			unit = pop_per_seat_wrong;
-		}
-		int seats_left = Settings.seats_in_district(i);
-		
-		double[] rem = new double[ds.length];
 		for( int j = 0; j < ds.length; j++) {
-			rem[j] = ds[j];
-			while( rem[j] >= unit) {
+			double mod = ds[j];
+			while( mod >= unit) {
 				res[j]++;
-				seats_left--;
-				rem[j] -= unit;
+				mod -= unit;
 			}
-			rem[j] = unit - rem[j];
 		}			
 
 		int n = -1;
-		double max = unit;
-		if( seats_left > 0) {
-			for( int j = 0; j < ds.length; j++) {
-				if( n < 0 || ds[j]-unit*res[j] > max) {
-					n = j;
-					max = ds[j]-unit*res[j];
-				}
-			}
-			if( max > 0) {
-				res[n]++;
+		double max = -1;
+		for( int j = 0; j < ds.length; j++) {
+			if( n < 0 || ds[j]-unit*res[j] > max) {
+				n = j;
+				max = ds[j]-unit*res[j];
 			}
 		}
-		/*
-		  log("votes for another seat ");
-		for( int j = 0; j < res.length; j++) {
-			log(""+rem[j]);
+		if( max > 0) {
+			res[n]++;
 		}
-		logn("");
-		*/
-
-		return rem;
-		
+		return res;
 	}
 
 

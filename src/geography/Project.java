@@ -4,9 +4,8 @@ import java.awt.Color;
 import java.io.File;
 import java.util.*;
 
-import javax.swing.*;
-
 import javax.swing.JOptionPane;
+
 import serialization.*;
 import solutions.Settings;
 import ui.MainFrame;
@@ -55,8 +54,6 @@ public class Project extends ReflectionJSONObject<Project> {
 	public double representation_weight = 0.5;
 	public boolean equalize_turnout = false;
 	public String muni_column;
-	public Vector<Vector<String>> multiElections = new Vector<Vector<String>>();
-	public Vector<Vector<String>> multiImputators = new Vector<Vector<String>>();
 	
 
 	public void post_deserialize() {
@@ -101,8 +98,8 @@ public class Project extends ReflectionJSONObject<Project> {
 		} else { System.out.println("members_per_district not found"); }
 		
 		if( containsKey("initial_population")) {
-			MainFrame.mainframe.evolutionPopulationTF.setText(getString("initial_population").trim());
-			MainFrame.mainframe.evolutionPopulationTF.postActionEvent();
+			MainFrame.mainframe.textField.setText(getString("initial_population").trim());
+			MainFrame.mainframe.textField.postActionEvent();
 		} else { System.out.println("initial_population not found"); }
 
 		if( containsKey("simulated_elections")) {

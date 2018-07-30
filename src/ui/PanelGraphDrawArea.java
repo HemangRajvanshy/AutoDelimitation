@@ -26,7 +26,7 @@ public class PanelGraphDrawArea extends JPanel {
     		"Competitiveness (victory margin)",
     		"Partisan symmetry",
     		"Racial vote dilution",
-    		"Undescribed voters",//"Voting power imbalance",
+    		"",//"Voting power imbalance",
 
     		//9
     		"",//"Annealing floor",
@@ -36,15 +36,15 @@ public class PanelGraphDrawArea extends JPanel {
     		"Contiguity",
     		"Equal population",
     		"Splits",
-    		"Specific Asymmetry",
+    		"",
     };
 
 
     public boolean[] b_draw = new boolean[]{
     		false,false,false,
     		true,
-    		true,true,true,true,true,
-    		false,
+    		true,true,true,true,false,
+    		true,
     		true,true,true,true,
     		false,
     		//true,true,
@@ -61,9 +61,9 @@ public class PanelGraphDrawArea extends JPanel {
     		Color.cyan,
     		Color.green,
     		Color.red,
-    		Color.magenta, //to
+    		Color.magenta,
     		
-    		Color.gray, //from
+    		Color.gray,
     		
     		Color.blue.darker(),
     		Color.cyan.darker(),

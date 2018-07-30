@@ -1,6 +1,6 @@
 package ui;
 
-import geography.VTD;
+import geography.Feature;
 import geography.FeatureCollection;
 import geography.Geometry;
 
@@ -173,18 +173,8 @@ public class MapPanel extends JPanel implements MouseListener, MouseMotionListen
 
 	@Override
 	public void mouseClicked(MouseEvent arg0) {
-		int x = arg0.getX();
-		int y = arg0.getY();
-		//System.out.println("mouse pressed "+x+" "+y);
-		VTD f = getFeature(x,y);
-		if( f == null) {
-			//System.out.println("no feature");
-			return;
-		}
-		f.toggleClicked();
-		MainFrame.mainframe.featuresPanel.setFeature(f);
-		invalidate();
-		repaint();
+		// TODO Auto-generated method stub
+		
 	}
 
 	@Override
@@ -205,10 +195,21 @@ public class MapPanel extends JPanel implements MouseListener, MouseMotionListen
 			
 			return;
 		}
+		int x = arg0.getX();
+		int y = arg0.getY();
+		//System.out.println("mouse pressed "+x+" "+y);
+		Feature f = getFeature(x,y);
+		if( f == null) {
+			//System.out.println("no feature");
+			return;
+		}
+		f.toggleClicked();
+		invalidate();
+		repaint();
 		// TODO Auto-generated method stub
 		
 	}
-	VTD getFeature(int x, int y) {
+	Feature getFeature(int x, int y) {
 		if( featureCollection == null || featureCollection.features == null) {
 			return null;
 		}
@@ -217,7 +218,7 @@ public class MapPanel extends JPanel implements MouseListener, MouseMotionListen
 			fsaa = 0;
 		}
 		
-		for( VTD f : featureCollection.features) {
+		for( Feature f : featureCollection.features) {
 			for( Polygon p : f.geometry.polygons) {
 				if( pnpoly(p,x*fsaa,y*fsaa)) {
 					return f;

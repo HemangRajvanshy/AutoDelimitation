@@ -14,13 +14,14 @@ import java.util.*;
 public class Geometry extends ReflectionJSONObject<Geometry> {
 	public String type;
 	public double[][][] coordinates;
+	public int[] xpolys;
+	public int[] ypolys;
 	public Polygon[] polygons;
 	public Polygon[] polygons_full;
 	public Color outlineColor = Color.BLACK;
 	public Color fillColor = FeatureCollection.DEFAULT_COLOR;
 	public boolean isDistrict = true;
 	public double[] full_centroid;
-	public double color_multiplier = 1;
 
 	
 	public static boolean isLatLon = true; 
@@ -31,23 +32,17 @@ public class Geometry extends ReflectionJSONObject<Geometry> {
 	
 	public static double shiftx=0,shifty=0,scalex=1,scaley=1;
 	
-	public static double min_squared_distance = 1;
-	public static double min_squared_distance_unsimplified = 0.1;
-	public static int min_point_frac = 16;
+	public double min_squared_distance = 1;
+	public double min_squared_distance_unsimplified = 0.1;
+	public int min_point_frac = 16;
 	
-	public static Polygon[] makePolys(double[][][] coordinates) {
+	public void makePolys() {
 		if( scalex == 0 || scalex != scalex) scalex = 1;
 		if( scaley == 0 || scaley != scaley) scaley = 1;
 		if( shiftx != shiftx) shiftx = 0;
 		if( shifty != shifty) shifty = 0;
 		
-		//System.out.println("makepolys s "+shiftx+" "+shiftx);
-		//System.out.println("makepolys r "+scalex+" "+scalex);
-		
-		int[] xpolys;
-		int[] ypolys;
-		
-		Polygon[] polygons = new Polygon[coordinates.length];
+		polygons = new Polygon[coordinates.length];
 		for( int i = 0; i < coordinates.length; i++) {
 			if(Settings.b_make_simplified_polys || true ) {
 				int point_count = coordinates[i].length/( min_point_frac );
@@ -92,18 +87,11 @@ public class Geometry extends ReflectionJSONObject<Geometry> {
 			}
 			polygons[i] = new Polygon(xpolys, ypolys, xpolys.length);
 		}
-		return polygons;
-	}
-	
-	public void makePolys() {
-		polygons = makePolys(coordinates);
+
 	}
 	public double[] getAvg() {
 		double count = 0;
 		double[] dd = new double[]{0,0};
-		int[] xpolys;
-		int[] ypolys;
-
 		for( int i = 0; i < coordinates.length; i++) {
 			xpolys = new int[coordinates[i].length];
 			ypolys = new int[coordinates[i].length];
@@ -119,9 +107,6 @@ public class Geometry extends ReflectionJSONObject<Geometry> {
 		
 	}
 	public void makePolysFull() {
-		int[] xpolys;
-		int[] ypolys;
-
 		polygons_full = new Polygon[coordinates.length];
 		for( int i = 0; i < coordinates.length; i++) {
 			xpolys = new int[coordinates[i].length];
