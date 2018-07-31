@@ -79,9 +79,6 @@ public class Project extends ReflectionJSONObject<Project> {
 				return;
 			} else if( ext.equals(".shp")) {
 				MainFrame.mainframe.openShapeFile(f,true);
-			} else if( ext.equals("json")) {
-				MainFrame.mainframe.openGeoJson(f,true);
-				
 			} else {
 				JOptionPane.showMessageDialog(MainFrame.mainframe, "Invalid file format: "+source);
 				return;

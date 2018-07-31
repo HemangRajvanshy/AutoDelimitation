@@ -32,13 +32,8 @@ import com.hexiong.jdbf.JDBFException;
 import com.hexiong.jdbf.JDBField;
 
 
-public class MainFrame extends JFrame implements iChangeListener, iDiscreteEventListener {
-	/*
-	TODO: pre/post serialize to get district #?
-			-- need to make data exporter, and make it so that it imports district when applicable.
-			need to be able to customize district column name and save in project file, so can load districts.
-			*/
-	
+public class MainFrame extends JFrame implements iChangeListener, iDiscreteEventListener
+{
 	//======LOOPBACK
 	public static MainFrame mainframe;
 	public DialogManageLocks manageLocks = new DialogManageLocks();
@@ -47,8 +42,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public FrameSeatsVotesChart frameSeatsVotesChart = new FrameSeatsVotesChart();
 	
 	public ButtonGroup seatsModeBG = new ButtonGroup();
-	 
-	
 
 	//public Ecology ecology = new Ecology();
 	//========MODELS
@@ -98,8 +91,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 	//===========COMPONENTS - MENU ITEMS
 	public ButtonGroup selectionType = new ButtonGroup();
-	JMenuItem mntmShowVoteBalance = new JMenuItem("Color by vote balance");;
-	JMenuItem mntmShowDemographics = new JMenuItem("Color by demographic");;
+	JMenuItem mntmShowVoteBalance = new JMenuItem("Color by vote balance");
+	JMenuItem mntmShowDemographics = new JMenuItem("Color by demographic");
 	JCheckBoxMenuItem chckbxmntmShowPrecinctLabels = new JCheckBoxMenuItem("Show precinct labels");
 	JCheckBoxMenuItem chckbxmntmHideMapLines = new JCheckBoxMenuItem("Show map lines");
 	JCheckBoxMenuItem chckbxmntmFlipVertical = new JCheckBoxMenuItem("Flip vertical");
@@ -111,15 +104,12 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	JMenuItem mntmRenumber = new JMenuItem("Renumber districts");
 
 	//JMenu mnGeography = new JMenu("Geography");
-	JMenuItem mntmOpenGeojson = new JMenuItem("Open GeoJSON file");
 	//JMenu mnDemographics = new JMenu("Demographics");
 	JMenuItem chckbxmntmOpenCensusResults = new JMenuItem("Open Census results");
 	JMenuItem mntmOpenElectionResults = new JMenuItem("Open Election results");
 	JMenu mnEvolution = new JMenu("Evolution");
 	JMenu mnHelp = new JMenu("Help");
-	JMenuItem mntmWebsite = new JMenuItem("Website");
 	JMenuItem mntmSourceCode = new JMenuItem("Source code");
-	JMenuItem mntmLicense = new JMenuItem("License");
 	JMenuItem mntmExportcsv = new JMenuItem("Export results .csv");
 	JMenuItem mntmImportcsv = new JMenuItem("Import results .csv");
 	JMenuItem mntmShowStats = new JMenuItem("Show stats");
@@ -1374,8 +1364,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public JRadioButton rdbtnRankSelection;
 	public JRadioButton rdbtnRouletteSelection;
 	public JMenuItem mntmColorByWasted = new JMenuItem("Color by wasted votes");
-	public JMenuItem mntmWizard = new JMenuItem("Download vtd shapefile & population from census.gov...");
-	public JSeparator separator_7 = new JSeparator();
 	public JMenuItem mntmDescramble = new JMenuItem("descramble");
 	public JMenuItem mntmShowSeats = new JMenuItem("Show seats / votes");
 	public JMenuItem mntmShowRankedDistricts = new JMenuItem("Show ranked districts");
@@ -1976,125 +1964,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		}
 	}
 
-	class ImportCountyLevel extends Thread {
-		Thread nextThread = null;
-		public void run() {
-			System.out.println("import count level start");
-			String path = "ftp://autoredistrict.org/pub/county_level_stats/Merged%20--%20"+Download.states[Download.istate]+".txt";
-			System.out.println("url: "+path);
-	    	System.out.println("0");
-		    URL url;
-		    InputStream is = null;
-	    	System.out.println("0.0");
-
-		    BufferedReader br;
-		    String line;
-	    	System.out.println("0.1");
-
-	        Vector<String[]> v = new Vector<String[]>();
-
-		    try {
-		    	System.out.println("1");
-		        url = new URL(path);
-		    	System.out.println("2");
-		        is = url.openStream();  // throws an IOException
-		    	System.out.println("3");
-		        br = new BufferedReader(new InputStreamReader(is));
-		    	System.out.println("4");
-
-		        while ((line = br.readLine()) != null) {
-			    	System.out.print(".");
-		        	System.out.println(line);
-		        	String[] ss = line.split("\t");
-		        	for( int i = 0; i < ss.length; i++) {
-		        		ss[i] = ss[i].replaceAll("\"", "").replaceAll(",", "");
-		        	}
-		        	v.add(ss);
-		        }
-		    } catch (Exception mue) {
-		    	System.out.print("ex "+mue);
-		        mue.printStackTrace();
-		    }
-	        try {
-	            if (is != null) is.close();
-	        } catch (IOException ioe) {
-	            // nothing to see here
-	        }
-	        String[] headers = v.remove(0);
-			//todo: populate v with the data.
-			String county_column = "COUNTY_NAME";
-			int iCountyColumn = 0;
-			
-			//collect counties;
-			HashMap<String,Vector<Feature>> county_feats = new HashMap<String,Vector<Feature>>();
-			HashMap<String,Integer> county_pops = new HashMap<String,Integer>();
-			for( Feature feat : featureCollection.features) {
-				String county = (String) feat.properties.get(county_column);
-				county = county.trim().toUpperCase();
-				
-				Vector<Feature> vf = county_feats.get(county);
-				if( vf == null) { 
-					vf = new Vector<Feature>();
-					county_feats.put(county,vf);
-				}
-				vf.add(feat);
-				Integer i = county_pops.get(county);
-				if( i == null) { 
-					i = new Integer(0);
-					county_pops.put(county,i);
-				}
-				if( feat.properties.POPULATION == 0) {
-					Double d = Double.parseDouble(feat.properties.get(project.population_column).toString());
-					feat.properties.POPULATION = d.intValue();
-				}
-				i += feat.properties.POPULATION;
-				county_pops.put(county,i);
-			}
-			
-			//now deaggregate proportional
-			for( String[] ss : v) {
-				String incounty = ss[iCountyColumn].trim().toUpperCase();
-				Vector<Feature> vf = county_feats.get(incounty);
-				if( vf == null) {
-					incounty += " COUNTY";
-					vf = county_feats.get(incounty);
-					if( vf == null) {
-							System.out.println("not found!: "+incounty);
-							continue;
-					}
-				}
-				double total_pop = (double)county_pops.get(incounty);
-				System.out.println("found!: "+incounty+" "+total_pop);
-				double[] dd = new double[ss.length];
-				for( int i = 0; i < ss.length; i++) {
-					if( i == iCountyColumn || headers[i].equals("COUNTY_NAME") || headers[i].equals("COUNTY_FIPS")) {
-						continue;
-					}
-					dd[i] = Double.parseDouble(ss[i]);///total_pop;
-				}
-				for(Feature feat : vf) {
-					double feat_pop = feat.properties.POPULATION;
-					for( int i = 0; i < ss.length; i++) {
-						if( i == iCountyColumn || headers[i].equals("COUNTY_NAME") || headers[i].equals("COUNTY_FIPS")) {
-							continue;
-						}
-						feat.properties.put(headers[i], ""+(dd[i]*feat_pop/total_pop));
-					}
-				}
-			}
-			
-			
-			
-			trySetBasicColumns();
-			trySetGroupColumns();
-			System.out.println("done county data merge");
-			if( nextThread != null) {
-				nextThread.start();
-				nextThread = null;
-			}
-		}
-	}
-
 	
 	public void renumber() {
 		boolean[] used = new boolean[Settings.num_districts];
@@ -2475,68 +2344,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	}
 
 
-	class OpenGeoJsonFileThread extends FileThread {
-		OpenGeoJsonFileThread(File f) { super(f); }
-    	public void run() {
-		    dlbl.setText("Loading file "+f.getName()+"...");
-		    
-		    project.source_file = f.getAbsolutePath();
-			
-			featureCollection = new FeatureCollection(); 
-			if( panelStats != null) {
-				panelStats.featureCollection = featureCollection;
-			}
-
-			featureCollection.features = new Vector<Feature>();
-			HashMap<String,Feature> hmFeatures = new HashMap<String,Feature>();
-
-		    dlg.setVisible(true);
-	
-			String s = f.getName().toLowerCase();
-			System.out.println("Processing "+s+"...");
-			StringBuffer sb = getFile(f);
-			
-			stopEvolving();
-			geo_loaded = false;
-			Feature.display_mode = 0;
-			setEnableds();
-			
-			FeatureCollection fc = new FeatureCollection();
-			if( panelStats != null) {
-				panelStats.featureCollection = featureCollection;
-			}
-
-			try {
-				fc.fromJSON(sb.toString());
-			} catch (Exception ex) {
-				System.out.println("ex "+ex);
-				ex.printStackTrace();
-			}
-			for( Feature fe : fc.features) {
-				featureCollection.features.add(fe);
-				//if( fe.properties.DISTRICT != null && !fe.properties.DISTRICT.toLowerCase().equals("null") ) {
-				/*
-				if( suppress_duplicates) {
-					hmFeatures.put(fe.properties.DISTRICT, fe);
-				} else {
-					featureCollection.features.add(fe);
-				}
-				*/
-				//}
-			}
-			
-			
-		    dlbl.setText("Initializing wards...");
-
-			for( Feature fe : hmFeatures.values()) {
-				featureCollection.features.add(fe);
-			}
-			finishLoadingGeography();
-    	}
-	}
-
-
-
 	//==========FUNCTIONS
 	public void addEcologyListeners() {
 		if( !featureCollection.ecology.evolveListeners.contains(mapPanel)) {
@@ -2762,17 +2569,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			e.printStackTrace();
 		}
 	}
-	public void openGeoJson(File f,boolean synchronous) {
-		Thread t = new OpenGeoJsonFileThread(f);
-		t.start();
-		try {
-			if( synchronous)
-				t.join();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch ward
-			e.printStackTrace();
-		}
-	}
 	
 	public void openProjectFile(File f0, boolean run) {
 		project = new Project();
@@ -2816,65 +2612,50 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		project.primary_key_column = pkey;
 	}
 
-	boolean hushSetDistrict = false;
 	protected boolean hushcomboBoxMuniColumn;
 	ButtonGroup buttonGroupPopMinMethod = new ButtonGroup();
-	public void setDistrictColumn(String district) {
-		System.out.println("setDistrictColumn hush?"+hushSetDistrict);
-		if( hushSetDistrict) {
-			return;
-		}
+
+	public void setDistrictColumn(String district)
+	{
 		boolean changed = !district.equals(project.district_column);
 		project.district_column = district;
-		if( changed) {
+		if(changed)
+		{
 			Feature.compare_centroid = false;
 			Collections.sort(featureCollection.features);
-			
-			if( featureCollection.features == null || featureCollection.features.size() == 0) {
-				
-			} else {
+
+			//Check if data array is not empty
+			if(!(featureCollection.features == null || featureCollection.features.size() == 0))
+			{
 				boolean is_in = featureCollection.features.get(0).properties.containsKey(district);
 				
 				int min = 999999999;
 				int max = -1;
-				for( Feature feat : featureCollection.features) {
+				for(Feature feat : featureCollection.features)
+				{
 					int d = 0;
-					try {
-
-						d = Integer.parseInt((String)feat.properties.get(district) );
-					} catch (Exception ex) {
-						System.out.println("ex aa "+ex);
-						d = 0;
-						feat.properties.put(district,"0");
-						System.out.println("missing district "+district );
-						try {
-							System.out.println((String)feat.properties.get("GEOID10"));
-						} catch (Exception ex2) {
-							
-						}
-						try {
-							System.out.println((String)feat.properties.get(district));
-						} catch (Exception ex2) {
-							
-						}
-						//ex.printStackTrace();
-						continue;
-					}
+					d = (int)Float.parseFloat((String)feat.properties.get(district));
+					System.out.println("District Number: " + d);
 					if( d < min) { min = d; }
 					if( d > max) { max = d; }
 				}
-				if( min > max || max-min > 200) {
+
+				if( min > max || max-min > 200)
+				{
 					return;
 				}
 				System.out.println("min: "+min+" max: "+max);
+
 				Settings.num_districts = (max-min)+1;
 				textFieldNumDistricts.setText(""+Settings.num_districts);
 				
-				if( is_in) {
+				if(is_in) {
 					featureCollection.loadDistrictsFromProperties(district);
 				}
 			}
-			if( featureCollection.ecology != null && featureCollection.ecology.population != null && featureCollection.ecology.population.size() > 0) {
+
+			/*if( featureCollection.ecology != null && featureCollection.ecology.population != null && featureCollection.ecology.population.size() > 0)
+			{
 				while( featureCollection.ecology.population.size() > 1) {
 					featureCollection.ecology.population.remove(1);
 				}
@@ -2883,10 +2664,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				panelStats.getStats();
 				featureCollection.findUncontested();
 				panelStats.getStats();
-				if( featureCollection.vuncontested1.size() > 0 || featureCollection.vuncontested2.size() > 0 && !hushSetDistrict) {
+				if( featureCollection.vuncontested1.size() > 0 || featureCollection.vuncontested2.size() > 0) {
 					System.out.println("uncontested found!");
 					if(project.substitute_columns.size() > 0 && Settings.substitute_uncontested) {
-						hushSetDistrict = true;
 						try {
 							System.out.println("setting substitutes");
 							setSubstituteColumns();
@@ -2895,10 +2675,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 						}
 						Settings.ignore_uncontested = false;
 						panelStats.getStats();
-						hushSetDistrict = true;
 						project.district_column = "";
 						setDistrictColumn(district);
-						hushSetDistrict = false;
 					} else {
 						int opt = JOptionPane.showConfirmDialog(this, "Uncontested elections detected.  Lock and ignore uncontested districts?", "Uncontested elections detected!", JOptionPane.YES_NO_OPTION);
 						if( opt == JOptionPane.YES_OPTION) {
@@ -2921,12 +2699,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				} else {
 					Settings.ignore_uncontested = false;
 				}
-			}
-			hushSetDistrict = false;
+			} */
+
 			mapPanel.invalidate();
 			mapPanel.repaint();
 		}
 	}
+
 
 	public void setPopulationColumn(String pop_col) {
 		project.population_column = pop_col;
@@ -3856,8 +3635,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		sliderElitesMutated.setToolTipText("<html>Elitism involves copying a small proportion of the fittest candidates, unchanged, into the <br/>next generation. This can sometimes have a dramatic impact on performance by ensuring <br/>that the EA does not waste time re-discovering previously discarded partial solutions. <br/>Candidate solutions that are preserved unchanged through elitism remain eligible for <br/>selection as parents when breeding the remainder of the next generation.<br/>\r\nSo basically it takes a small fraction of the best candidates, and copies them over unchanged <br/>to the next generation.  So these are essential your immortals -- every one else only lasts one <br/>generation.<br/><br/>\r\nExperimentally, about 25% elitism seems to work fine.<br/><br/>\r\nThere is also be a slider \"% elites mutated\".  Notice the description above is that the elites <br/>remain unchanged between generations.  With mutate elites selected, the elites will slowly <br/>mutate along with the rest of the population. This helps it search a little faster, but when it <br/>gets down to fine-tuning, where you only want the very best, you want to turn this off, as <br/>otherwise you'd just be hovering around the best.<br/></html>");
 		rdbtnMinimizeMaxDev = new JRadioButton("Minimize squared dev.");
 		rdbtnMinimizeMeanDev = new JRadioButton("Minimize absolute dev.");
-		mntmWizard = new JMenuItem("Download vtd shapefile & population from census.gov...");
-		separator_7 = new JSeparator();
 		mntmDescramble = new JMenuItem("descramble");
 		mntmShowSeats = new JMenuItem("Show seats / votes");
 		mnWindows = new JMenu("Windows");
@@ -3878,8 +3655,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 		//===========COMPONENTS - MENU ITEMS
 		selectionType = new ButtonGroup();
-		mntmShowVoteBalance = new JMenuItem("Color by vote balance");;
-		mntmShowDemographics = new JMenuItem("Color by demographic");;
+		mntmShowVoteBalance = new JMenuItem("Color by vote balance");
+		mntmShowDemographics = new JMenuItem("Color by demographic");
 		chckbxmntmShowPrecinctLabels = new JCheckBoxMenuItem("Show precinct labels");
 		chckbxmntmHideMapLines = new JCheckBoxMenuItem("Show map lines");
 		chckbxmntmFlipVertical = new JCheckBoxMenuItem("Flip vertical");
@@ -3890,15 +3667,12 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		mntmMergeData = new JMenuItem("Merge data");
 		mntmRenumber = new JMenuItem("Renumber districts");
 
-		mntmOpenGeojson = new JMenuItem("Open GeoJSON file");
 		chckbxmntmOpenCensusResults = new JMenuItem("Open Census results");
 		
 		mntmOpenElectionResults = new JMenuItem("Open Election results");
 		mnEvolution = new JMenu("Evolution");
 		mnHelp = new JMenu("Help");
-		mntmWebsite = new JMenuItem("Website");
 		mntmSourceCode = new JMenuItem("Source code");
-		mntmLicense = new JMenuItem("License");
 		mntmExportcsv = new JMenuItem("Export results .csv");
 		mntmImportcsv = new JMenuItem("Import results .csv");
 		mntmShowStats = new JMenuItem("Show stats");
@@ -3923,8 +3697,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		progressBar = new JProgressBar();
 		frameSeatsVotesChart = new FrameSeatsVotesChart();
 
-		mntmShowVoteBalance = new JMenuItem("Color by vtd vote");;
-		mntmShowDemographics = new JMenuItem("Color by vtd demographic");;
+		mntmShowVoteBalance = new JMenuItem("Color by vtd vote");
+		mntmShowDemographics = new JMenuItem("Color by vtd demographic");
 		chckbxmntmShowPrecinctLabels = new JCheckBoxMenuItem("Show precinct labels");
 		chckbxmntmHideMapLines = new JCheckBoxMenuItem("Show map lines");
 		chckbxmntmFlipVertical = new JCheckBoxMenuItem("Flip vertical");
@@ -3936,14 +3710,11 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		mntmRenumber = new JMenuItem("Renumber districts");
 
 		//mnGeography = new JMenu("Geography");
-		mntmOpenGeojson = new JMenuItem("Open GeoJSON file");
 		//mnDemographics = new JMenu("Demographics");
 		chckbxmntmOpenCensusResults = new JMenuItem("Open Census results");
 		mntmOpenElectionResults = new JMenuItem("Open Election results");
 		mnHelp = new JMenu("Help");
-		mntmWebsite = new JMenuItem("Website");
 		mntmSourceCode = new JMenuItem("Source code");
-		mntmLicense = new JMenuItem("License");
 		mntmExportcsv = new JMenuItem("Export results .csv");
 		mntmImportcsv = new JMenuItem("Import results .csv");
 		mntmShowStats = new JMenuItem("Show stats");
@@ -4059,35 +3830,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		});
 		//mnFile.add(mntmOpenProjectFile_1);
 		//mnFile.add(mntmSaveProjectFile);
-		
-		JSeparator separator = new JSeparator();
-		mntmWizard.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				OpenShapeFileThread ost = new OpenShapeFileThread(Download.vtd_file);
-				ImportCensus2Thread ir = new ImportCensus2Thread();
-				ImportTranslations it = new ImportTranslations();
-				it.nextThread = new ImportCountyLevel();
-				ir.nextThread =  it;
-				ost.nextThread = ir;
-				//if( Download.census_merge_working) {
-					//if( Download.census_merge_old) {
-					//} else {
-					//	ost.nextThread = new ImportGazzeterThread(); 
-					//}
-				//}
-				Download.nextThread = ost;
-				DialogDownload dd = new DialogDownload();
-				dd.show();
-				//!Download.downloadData(dlg, dlbl))
-			}
-		});
-		
-		mnFile.add(mntmWizard);
 
-		mnFile.add(separator_7);
-		//mnFile.add(separator);
-		
-		mnFile.add(mntmOpenGeojson);
 		mntmOpenEsriShapefile.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				JFileChooser jfc = new JFileChooser();
@@ -4148,26 +3891,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				new ImportAggregateCustom().init();
 			}
 		});
-		
-		mntmImportCensusData_1 = new JMenuItem("Import Census Data from census.gov");
-		mntmImportCensusData_1.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				//OpenShapeFileThread ost = new OpenShapeFileThread(Download.vtd_file);
-				if( Download.census_merge_working) {
-					if( Download.census_merge_old) {
-						Download.nextThread = new ImportCensus2Thread(); 
-					} else {
-						Download.nextThread = new ImportGazzeterThread(); 
-						
-					}
-				}
-				//Download.nextThread = ost;
-				DialogDownload dd = new DialogDownload();
-				dd.setTitle("Download and aggregate census data from census.gov");
-				dd.show();
-			}
-		});
-		mnImportExport_1.add(mntmImportCensusData_1);
+
 		separator_2 = new JSeparator();
 		
 		mnImportExport_1.add(separator_2);
@@ -4384,18 +4108,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				}
 				loadElection(sb.toString());
 
-			}
-		});
-		
-		
-		mntmOpenGeojson.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				JFileChooser jfc = new JFileChooser();
-				jfc.setCurrentDirectory(new File(Download.getStartPath()));
-				jfc.showOpenDialog(null);
-				File fd = jfc.getSelectedFile();
-				
-				new OpenGeoJsonFileThread(fd).start();
 			}
 		});
 		
@@ -4768,31 +4480,12 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		
 		//JMenu mnResults = new JMenu("Results");
 		//menuBar.add(mnResults);
-		mntmLicense.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				JOptionPane.showMessageDialog(mainframe,""
-					    +"\nCopyright (C) 2015 Kevin Baas"
-					    +"\n"
-					    +"\nThis program is free software: you can redistribute it and/or modify"
-					    +"\nit under the terms of the GNU General Public License as published by"
-					    +"\nthe Free Software Foundation, either version 3 of the License, or"
-					    +"\n(at your option) any later version."
-					    +"\n"
-					    +"\nThis program is distributed in the hope that it will be useful,"
-					    +"\nbut WITHOUT ANY WARRANTY; without even the implied warranty of"
-					    +"\nMERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the"
-					    +"\nGNU General Public License for more details."
-					    +"\n"
-					    +"\nYou should have received a copy of the GNU General Public License"
-					    +"\nalong with this program.  If not, see <http://www.gnu.org/licenses/>."
-						);
-			}	
-		});
+
 		mntmSourceCode.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				URI uri = null;
 				try {
-					uri = new URL("https://github.com/happyjack27/autoredistrict").toURI();
+					uri = new URL("https://github.com/HemangRajvanshy/AutoDelimitation").toURI();
 				} catch (Exception e1) {
 					e1.printStackTrace();
 				}
@@ -4806,24 +4499,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			    }
 			}	
 		});
-		mntmWebsite.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				URI uri = null;
-				try {
-					uri = new URL("http://autoredistrict.org/documentation.html").toURI();
-				} catch (Exception e1) {
-					e1.printStackTrace();
-				}
-			    Desktop desktop = Desktop.isDesktopSupported() ? Desktop.getDesktop() : null;
-			    if (desktop != null && desktop.isSupported(Desktop.Action.BROWSE)) {
-			        try {
-			            desktop.browse(uri);
-			        } catch (Exception e) {
-			            e.printStackTrace();
-			        }
-			    }
-			}	
-		});
+
 		
 		mntmExportcsv.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
@@ -4987,10 +4663,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			}
 		});
 		//menuBar.add(S)
-		mnHelp.add(mntmWebsite);
 		mnHelp.add(mntmSourceCode);
-		mnHelp.add(mntmLicense);
-		
+
 		menuBar.add(mnWindows);
 		mnWindows.add(mntmShowStats);
 		mnWindows.add(mntmShowGraph);
@@ -5448,7 +5122,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		chckbxSubstituteColumns.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				boolean b = chckbxSubstituteColumns.isSelected();
-				if( b && false) {
+				if( b ) {
 					JOptionPane.showMessageDialog(mainframe, "Not implemented.");
 					chckbxSubstituteColumns.setSelected(false);
 					return;
@@ -5479,7 +5153,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		chckbxSecondElection.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				boolean b = chckbxSecondElection.isSelected();
-				if( b && false) {
+				if( b) {
 					JOptionPane.showMessageDialog(mainframe, "Not implemented.");
 					chckbxSecondElection.setSelected(false);
 					return;
@@ -5508,7 +5182,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		chckbxThirdElection.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				boolean b = chckbxThirdElection.isSelected();
-				if( b && false) {
+				if(b) {
 					JOptionPane.showMessageDialog(mainframe, "Not implemented.");
 					chckbxThirdElection.setSelected(false);
 					return;
@@ -5828,8 +5502,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		rdbtnRankSelection.setVisible(false);
 		
 		rdbtnTruncationSelection.setVisible(false);
-		
-
 
 
 		//Settings.speciation_fraction = 0.5;//1.0;
@@ -5841,30 +5513,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		splitPane2.setBottomComponent(mapPanel);
 		mapPanel.seatsPanel = seatsPanel;
 		seatsPanel.mapPanel= mapPanel;
-		
-		panelStats.featureCollection = featureCollection;
-		frameStats = new JFrame();
-		frameStats.setContentPane(panelStats);
-		frameStats.setTitle("Stats");
-		Dimension dim = panelStats.getPreferredSize();
-		dim.height += 20;		
-		frameStats.setSize(dim);
-		
-		frameGraph = new JFrame();
-		frameGraph.setContentPane(panelGraph);
-		frameGraph.setTitle("Graph");
-		dim = panelGraph.getPreferredSize();
-		dim.height += 20;
-		frameGraph.setSize(dim);
-		
-		frameGraph.move(this.getWidth(), this.getX());
-		frameGraph.show();
-		frameSeatsVotesChart.move(this.getWidth(), this.getX()+frameGraph.getHeight());
-		frameSeatsVotesChart.show();
-		frameStats.move(this.getWidth()+frameSeatsVotesChart.getWidth(), this.getX()+frameGraph.getHeight());
-		frameStats.show();
-		
 	}
+
 	public boolean hush_setSeatsMode = false;
 	public JCheckBox chckbxNewCheckBox = new JCheckBox("No 4 seat districts");
 	public JLabel srlblMuniColumn = new JLabel("Muni column");
@@ -5880,7 +5530,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public JRadioButton rdbtnMinimizeMeanDev = new JRadioButton("Minimize absolute dev.");
 	public JMenuItem mntmCopyColumn;
 	public JSeparator separator_9;
-	public JMenuItem mntmImportCensusData_1;
 	public JSeparator separator_8;
 	public JSeparator separator_10;
 	public JSlider slider_anneal;
@@ -6253,8 +5902,4 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		setElectionColumns3();
 		setSubstituteColumns();
 	}
-
-
-
-	
 }
