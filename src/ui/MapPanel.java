@@ -47,7 +47,8 @@ public class MapPanel extends JPanel implements MouseListener, MouseMotionListen
     }
 
     @Override
-    public void paintComponent(Graphics graphics0) {
+    public void paintComponent(Graphics graphics0)
+	{
     	try {
     		int fsaa = FSAA;
     		if( MainFrame.mainframe.evolving) {

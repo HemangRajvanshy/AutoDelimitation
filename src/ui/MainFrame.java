@@ -2555,7 +2555,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		project.election_columns_3.clear();
 		setElectionColumns3();
 		project.substitute_columns.clear();
-		setSubstituteColumns();
+		//setSubstituteColumns();
 	}
 	
 	public void openShapeFile(File f,boolean synchronous) {
@@ -2635,7 +2635,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				{
 					int d = 0;
 					d = (int)Float.parseFloat((String)feat.properties.get(district));
-					System.out.println("District Number: " + d);
+					//System.out.println("District Number: " + d);
 					if( d < min) { min = d; }
 					if( d > max) { max = d; }
 				}
@@ -2707,7 +2707,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	}
 
 
-	public void setPopulationColumn(String pop_col) {
+	public void setPopulationColumn(String pop_col)
+	{
 		project.population_column = pop_col;
 		for( Feature f : featureCollection.features) {
 			String pop = f.properties.get(pop_col).toString();
@@ -2919,7 +2920,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	}
 
 	
-	public void setSubstituteColumns() {
+	/*public void setSubstituteColumns() {
 		int max = chckbxThirdElection.isSelected() ? 3 : chckbxSecondElection.isSelected() ? 2 : 1;
 		boolean[][] buncontested = new boolean[][]{FeatureCollection.buncontested1, FeatureCollection.buncontested2, FeatureCollection.buncontested3};
 		Vector<String>[] dems = (Vector<String>[])new Vector[]{project.election_columns, project.election_columns_2, project.election_columns_3};
@@ -3016,7 +3017,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		
 		setEnableds();	
 		
-	}
+	}*/
 	
 	public void selectLayers() {
 		boolean is_evolving = this.evolving;
@@ -3833,12 +3834,12 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 		mntmOpenEsriShapefile.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				JFileChooser jfc = new JFileChooser();
-				jfc.setCurrentDirectory(new File(Download.getStartPath()));
+				/*JFileChooser jfc = new JFileChooser();
 				FileNameExtensionFilter filter = new FileNameExtensionFilter("ESRI shapefiles", "shp");
 				jfc.setFileFilter(filter);
 				jfc.showOpenDialog(null);
-				File fd = jfc.getSelectedFile();
+				File fd = jfc.getSelectedFile();*/
+				File fd = new File("/home/hemang/Desktop/TONK/Tonk.shp");
 				if( fd == null) {
 					return;
 				}
@@ -5513,6 +5514,29 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		splitPane2.setBottomComponent(mapPanel);
 		mapPanel.seatsPanel = seatsPanel;
 		seatsPanel.mapPanel= mapPanel;
+
+		panelStats.featureCollection = featureCollection;
+		frameStats = new JFrame();
+		frameStats.setContentPane(panelStats);
+		frameStats.setTitle("Stats");
+		Dimension dim = panelStats.getPreferredSize();
+		dim.height += 20;
+		frameStats.setSize(dim);
+
+		frameGraph = new JFrame();
+		frameGraph.setContentPane(panelGraph);
+		frameGraph.setTitle("Graph");
+		dim = panelGraph.getPreferredSize();
+		dim.height += 20;
+		frameGraph.setSize(dim);
+
+		frameGraph.move(this.getWidth(), this.getX());
+		frameGraph.show();
+		/*
+		frameSeatsVotesChart.move(this.getWidth(), this.getX()+frameGraph.getHeight());
+		frameSeatsVotesChart.show();
+		frameStats.move(this.getWidth()+frameSeatsVotesChart.getWidth(), this.getX()+frameGraph.getHeight());
+		frameStats.show();*/
 	}
 
 	public boolean hush_setSeatsMode = false;
@@ -5900,6 +5924,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		setElectionColumns();
 		setElectionColumns2();
 		setElectionColumns3();
-		setSubstituteColumns();
+		//setSubstituteColumns();
 	}
 }

@@ -298,13 +298,14 @@ public class Feature extends ReflectionJSONObject<Feature> implements Comparable
 		return super.instantiateObject(key);
 	}
 
-	public void draw(Graphics g) {
+	public void draw(Graphics g)
+	{
 		if( geometry.polygons == null) {
 			geometry.makePolys();
 		}
 		if( geometry.fillColor != null || vtd.state != 0 || display_mode != DISPLAY_MODE_NORMAL) {
 			g.setColor(geometry.fillColor);
-			if( display_mode == DISPLAY_MODE_TEST1) {
+			/*if( display_mode == DISPLAY_MODE_TEST1) {
 				g.setColor(vtd.elections != null && vtd.elections.size() > 0 ? FeatureCollection.DEFAULT_COLOR :  Color.black);
 			} else if( display_mode == DISPLAY_MODE_TEST2) {
 				g.setColor(vtd.has_census_results ? FeatureCollection.DEFAULT_COLOR :  Color.black);
@@ -353,11 +354,13 @@ public class Feature extends ReflectionJSONObject<Feature> implements Comparable
 				if( vtd.state == 2) {
 					g.setColor(Color.gray);
 				}
-			}
+			}*/
 			for( int i = 0; i < geometry.polygons.length; i++) {
 				g.fillPolygon(geometry.polygons[i]);
 			}
 		}
+
+		//Drawing borders
 		if( geometry.outlineColor != null && draw_lines && !MainFrame.mainframe.evolving) {
 			g.setColor(geometry.outlineColor);
 			for( int i = 0; i < geometry.polygons.length; i++) {

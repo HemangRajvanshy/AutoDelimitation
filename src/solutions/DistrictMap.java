@@ -58,40 +58,32 @@ public class DistrictMap implements iEvolvable, Comparable<DistrictMap> {
     }
     
 	
-	public boolean loadDistrictsFromProperties(FeatureCollection collection, String column_name) {
+	public boolean loadDistrictsFromProperties(FeatureCollection collection, String column_name)
+	{
 		boolean has_districts = true;
-		boolean zero_indexed = false;
-		for( int i = 0; i < collection.features.size(); i++) {
-			try {
-				Feature f = collection.features.get(i);
-				if( !f.properties.containsKey(column_name)) {
-					System.out.println("key missing");
-				} else {
-					try {
-						if( Integer.parseInt((String)f.properties.get(column_name)) == 0) {
-							zero_indexed = true;
-						}
-					} catch (Exception ex) {
-						System.out.println("parse error "+ex);
-					}
-				}
-			} catch (Exception ex) {
-				ex.printStackTrace();
-			}
+		boolean zero_indexed = true;
+
+		int min = 999999999;
+		int max = -1;
+		for(Feature feat : collection.features)
+		{
+			int d = 0;
+			d = (int)Float.parseFloat((String)feat.properties.get(column_name));
+			//System.out.println("District Number: " + d);
+			if( d < min) { min = d; }
+			if( d > max) { max = d; }
 		}
-		for( int i = 0; i < collection.features.size(); i++) {
-			try {
+
+		for( int i = 0; i < collection.features.size(); i++)
+		{
 				Feature f = collection.features.get(i);
-				if( !f.properties.containsKey(column_name)) {
-					System.out.println("district missing ("+column_name+"), randomizing");
-					has_districts = false;
-					vtd_districts[i] = (int)(Math.random()*(double)Settings.num_districts);
-				} else {
-					vtd_districts[i] = Integer.parseInt((String)f.properties.get(column_name))-(zero_indexed ? 0 : 1);//((int)f.properties.getDouble(column_name))-(zero_indexed ? 0 : 1);
+				if(f.properties.containsKey(column_name))
+				{
+					vtd_districts[i] = (int) Float.parseFloat((String) f.properties.get(column_name)) - min;//((int)f.properties.getDouble(column_name))-(zero_indexed ? 0 : 1);
+					//System.out.println("Assigned district number to " + i + " is: " + vtd_districts[i]);
 				}
-			} catch (Exception ex) {
-				System.out.println("parse error2 "+ex);
-			}
+				else
+					System.out.println("district missing (" + column_name + "), FIX PLEASE");
 		}
 		fillDistrictwards();
 		try {
@@ -110,29 +102,11 @@ public class DistrictMap implements iEvolvable, Comparable<DistrictMap> {
 			f.properties.put(column_name, vtd_districts[i]+1);
 		}
 	}
-	
-	public void randomizeDistricts() {
-		resize_districts(Settings.num_districts);
-		for( int i = 0; i < vtd_districts.length; i++) {
-			vtd_districts[i] = (int)(Math.random()*(double)Settings.num_districts);
-		}
-		setGenome(vtd_districts);
-		fillDistrictwards();
-	}
-
-	
-
-    //makeLike
-    //sfads
 
     //always find the most identical version before spawning new ones!
     //this dramatically reduces convergence time!
     public int[] getGenome(int[] baseline) {
-    	for( int i = 0; i < vtd_districts.length; i++) {
-    		while(vtd_districts[i] >= Settings.num_districts) {
-    			vtd_districts[i] = (int)Math.floor(Math.random()*(double)Settings.num_districts);
-    		}
-    	}/*
+    	/*
     	int orig_matches = 0;
     	for( int i = 0; i < ward_districts.length; i++) {
 			if( ward_districts[i] == baseline[i])
@@ -636,15 +610,15 @@ public class DistrictMap implements iEvolvable, Comparable<DistrictMap> {
 	    	for( int i = 0; i < districts.size()  && i < Settings.num_districts; i++) {
 	    		districts.get(i).resetPopulation();
 	    		int pop = (int)districts.get(i).getPopulation();
-	    		if( pop <= 10) {
-	    			int num = vtd_districts.length / Settings.num_districts;
-	    			System.out.println("pop below 10 ("+pop+") for district "+i+" assigning "+num+" vtds");
-	    			for( int j = 0; j < num; j++) {
-	    				int m = (int)(Math.random()*(double)vtd_districts.length);
-	    				vtd_districts[m] = i;
-	    			}
-	        		districts.get(i).resetPopulation();
-	    		}
+//	    		if( pop <= 10) {
+//	    			int num = vtd_districts.length / Settings.num_districts;
+//	    			System.out.println("pop below 10 ("+pop+") for district "+i+" assigning "+num+" vtds");
+//	    			for( int j = 0; j < num; j++) {
+//	    				int m = (int)(Math.random()*(double)vtd_districts.length);
+//	    				vtd_districts[m] = i;
+//	    			}
+//	        		districts.get(i).resetPopulation();
+//	    		}
 	    	}
     	}
 

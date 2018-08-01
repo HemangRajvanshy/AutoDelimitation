@@ -212,7 +212,8 @@ public class FeatureCollection extends ReflectionJSONObject<FeatureCollection> {
 		dlonlat = Math.cos((lat0+lat1)/2);
 	}
 		
-	public void draw(Graphics g) {
+	public void draw(Graphics g)
+	{
 		//Graphics2D g2 = (Graphics2D)g;
 		g.setColor(BACKGROUND_COLOR);
 		g.fillRect(0, 0, 6000, 4000);
@@ -292,12 +293,16 @@ public class FeatureCollection extends ReflectionJSONObject<FeatureCollection> {
 						}
 					}
 				}
-				for( int i = 0; i < features.size(); i++) {
+				for( int i = 0; i < features.size(); i++)
+				{
 					Feature f = features.get(i);
 					VTD b = f.vtd;
 					Geometry geo = features.get(i).geometry;
+
 					int di = dm.vtd_districts[b.id];
-					if( di >= Settings.num_districts) {
+
+					if( di >= Settings.num_districts)
+					{
 						System.out.println("district out of range! "+di);
 						continue;
 					}
@@ -314,186 +319,16 @@ public class FeatureCollection extends ReflectionJSONObject<FeatureCollection> {
 						System.out.println("ex d "+ex);
 						ex.printStackTrace();
 					}
-					try {
-						int color = di;
-						if( color < c.length) {
-							geo.fillColor = c[color];
-						}
-					} catch (Exception ex) {
-						System.out.println("ex e "+ex);
-						ex.printStackTrace();
-					}
-					
-				}
-			}
-		}
-		if( Feature.display_mode == Feature.DISPLAY_MODE_WASTED_VOTES) {
-			if( shown_map < ecology.population.size()) {
-				DistrictMap dm  = ecology.population.get(shown_map);
-				Color[] district_colors = new Color[Settings.num_districts];
-				for( int i = 0; i < Settings.num_districts; i++) {
-					district_colors[i] = dm.getWastedVoteColor(i);
-				}
 
-				for( int i = 0; i < features.size(); i++) {
-					Feature f = features.get(i);
-					VTD b = f.vtd;
-					Geometry geo = features.get(i).geometry;
-					int di = dm.vtd_districts[b.id];
-					geo.fillColor = district_colors[di];
-				}
-			}
-			//wasted_votes_by_district_and_party
-		} else
-		if( Feature.display_mode == Feature.DISPLAY_MODE_DIST_POP) {
-			if( shown_map < ecology.population.size()) {
-				DistrictMap dm  = ecology.population.get(shown_map);
-				int total = 0;
-				for( int i = 0; i < Settings.num_districts; i++) {
-					total += dm.districts.get(i).getPopulation();
-				}
-				total /= Settings.num_districts;
-				
-				int max = -1000000000; 
-				int min = +1000000000; 
-				for( int i = 0; i < Settings.num_districts; i++) {
-					if( dm.districts.get(i).getPopulation()-total > max) {
-						max = (int)dm.districts.get(i).getPopulation()-total;
+					int color = di;
+					if( color < c.length)
+					{
+						geo.fillColor = c[color];
 					}
-					if( dm.districts.get(i).getPopulation()-total < min) {
-						min = (int)dm.districts.get(i).getPopulation()-total;
-					}
-				}
-				Color[] district_colors = new Color[Settings.num_districts];
-				for( int i = 0; i < Settings.num_districts; i++) {
-					double amt = dm.districts.get(i).getPopulation()-total;
-					if( amt < 0) {
-						amt /= min;
-						int shade = (int)(255.0*amt); 
-						district_colors[i] = new Color(255,255-shade,255-shade);
-					} else if (amt > 0) {
-						amt /= max;
-						int shade = (int)(255.0*amt); 
-						district_colors[i] = new Color(255-shade,255,255-shade);
-					} else {
-						district_colors[i] = DEFAULT_COLOR;
-					}
-				}
-				for( int i = 0; i < features.size(); i++) {
-					Feature f = features.get(i);
-					VTD b = f.vtd;
-					Geometry geo = features.get(i).geometry;
-					int di = dm.vtd_districts[b.id];
-					geo.fillColor = district_colors[di];
 				}
 			}
 		}
-		double mavg_min = 0; 
-		double mavg_max = 0; 
-		if( Feature.display_mode == Feature.DISPLAY_MODE_COMPACTNESS) {
-			if( shown_map < ecology.population.size()) {
-				DistrictMap dm  = ecology.population.get(shown_map);
-				dm.getReciprocalIsoPerimetricQuotient();
-				
-				double max = -1000000000; 
-				double min = +1000000000; 
-				for( int i = 0; i < Settings.num_districts; i++) {
-					if( Math.sqrt(dm.districts.get(i).iso_quotient) > max) {
-						max = Math.sqrt(dm.districts.get(i).iso_quotient);
-					}
-					if( Math.sqrt(dm.districts.get(i).iso_quotient) < min) {
-						min = Math.sqrt(dm.districts.get(i).iso_quotient);
-					}
-				}
-				mavg_min += (min-mavg_min)/(mavg_min == 0 ? 1 : 20); 
-				mavg_max += (max-mavg_max)/(mavg_max == 0 ? 1 : 20); 
-				if( mavg_min < min) min = mavg_min;
-				if( mavg_max > max) max = mavg_max;
-				
-				Color[] district_colors = new Color[Settings.num_districts];
-				for( int i = 0; i < Settings.num_districts; i++) {
-					double amt = 1.0-Math.abs((Math.sqrt(dm.districts.get(i).iso_quotient)-min)/(max-min));
-					amt = amt*2.0-1.0;
-					if( amt < 0) {
-						amt *= -1;
-						int shade = (int)(255.0*amt); 
-						district_colors[i] = new Color(255-shade,255,255-shade);
-					} else if (amt > 0) {
-						int shade = (int)(255.0*amt); 
-						district_colors[i] = new Color(255,255-shade,255-shade);
-					} else {
-						district_colors[i] = DEFAULT_COLOR;
-					}
-					/*
-					
-					int shade = (int)(255.0*amt); 
-					if( shade < 0) {
-						shade = 0;
-					}
-					if( shade > 255) {
-						shade = 255;
-					}
-					district_colors[i] = new Color(255,255-shade,255-shade);
-					*/
-				}
-				for( int i = 0; i < features.size(); i++) {
-					Feature f = features.get(i);
-					VTD b = f.vtd;
-					Geometry geo = features.get(i).geometry;
-					int di = dm.vtd_districts[b.id];
-					geo.fillColor = district_colors[di];
-				}
-			}
-		}
-		if( Feature.display_mode == Feature.DISPLAY_MODE_DIST_VOTE) {
-			if( shown_map < ecology.population.size()) {
-				DistrictMap dm  = ecology.population.get(shown_map);
-				int total = 0;
-				for( int i = 0; i < Settings.num_districts; i++) {
-					total += dm.districts.get(i).getPopulation();
-				}
-				total /= Settings.num_districts;
-				
-				Color[] district_colors = new Color[Settings.num_districts];
-				//double[] district_colors = new Color[Settings.num_districts];
-				double[] tot = new double[Settings.num_districts];
-				double[] red = new double[Settings.num_districts];
-				double[] green = new double[Settings.num_districts];
-				double[] blue = new double[Settings.num_districts];
-				
-				for( int i = 0; i < features.size(); i++) {
-					Feature f = features.get(i);
-					VTD b = f.vtd;
-					Geometry geo = features.get(i).geometry;
-					int di = dm.vtd_districts[b.id];
-					
-					for( int k = 0; k < b.elections.size(); k++) {
-						Vector<Election> dem = b.elections.get(k);
-						for( int j = 0; j < dem.size() && j < standard_district_colors.length; j++) {
-							int pop = dem.get(j).population;
-							tot[di] += pop;
-							red[di] += standard_district_colors[j].getRed()*pop;
-							green[di] += standard_district_colors[j].getGreen()*pop;
-							blue[di] += standard_district_colors[j].getBlue()*pop;
-						}
-					}
-				}
-				for( int i = 0; i < Settings.num_districts; i++) {
-					district_colors[i] = new Color(
-							(int)(red[i] / tot[i]),
-							(int)(green[i] / tot[i]),
-							(int)(blue[i] / tot[i])
-					);
-				}			
-				for( int i = 0; i < features.size(); i++) {
-					Feature f = features.get(i);
-					VTD b = f.vtd;
-					Geometry geo = features.get(i).geometry;
-					int di = dm.vtd_districts[b.id];
-					geo.fillColor = district_colors[di];
-				}
-			}
-		}
+
         for( Feature f : features) {
         	f.geometry.makePolys();
         	f.draw(g);
@@ -921,6 +756,7 @@ public class FeatureCollection extends ReflectionJSONObject<FeatureCollection> {
 	}
 
 	public void loadDistrictsFromProperties(String column_name) {
+
 		Feature.compare_centroid = false;
 		Collections.sort(features);
 		
@@ -934,6 +770,7 @@ public class FeatureCollection extends ReflectionJSONObject<FeatureCollection> {
 		while( ecology.population.size() < Settings.population) {
 			ecology.population.add(new DistrictMap(vtds,Settings.num_districts));
 		}
+		System.out.println(" SIZE OF ECOLOGY: " + ecology.population.size());
 		for( DistrictMap dm : ecology.population) {
 			dm.loadDistrictsFromProperties(this, column_name);
 			//dm.setGenome(new_ward_districts);
@@ -1142,3 +979,175 @@ public class FeatureCollection extends ReflectionJSONObject<FeatureCollection> {
 		return q;
 	}
 }
+
+// AT line 331
+/*if( Feature.display_mode == Feature.DISPLAY_MODE_WASTED_VOTES) {
+			if( shown_map < ecology.population.size()) {
+				DistrictMap dm  = ecology.population.get(shown_map);
+				Color[] district_colors = new Color[Settings.num_districts];
+				for( int i = 0; i < Settings.num_districts; i++) {
+					district_colors[i] = dm.getWastedVoteColor(i);
+				}
+
+				for( int i = 0; i < features.size(); i++) {
+					Feature f = features.get(i);
+					VTD b = f.vtd;
+					Geometry geo = features.get(i).geometry;
+					int di = dm.vtd_districts[b.id];
+					geo.fillColor = district_colors[di];
+				}
+			}
+			//wasted_votes_by_district_and_party
+		} else
+		if( Feature.display_mode == Feature.DISPLAY_MODE_DIST_POP)
+		{
+			if( shown_map < ecology.population.size()) {
+				DistrictMap dm  = ecology.population.get(shown_map);
+				int total = 0;
+				for( int i = 0; i < Settings.num_districts; i++) {
+					total += dm.districts.get(i).getPopulation();
+				}
+				total /= Settings.num_districts;
+
+				int max = -1000000000;
+				int min = +1000000000;
+				for( int i = 0; i < Settings.num_districts; i++) {
+					if( dm.districts.get(i).getPopulation()-total > max) {
+						max = (int)dm.districts.get(i).getPopulation()-total;
+					}
+					if( dm.districts.get(i).getPopulation()-total < min) {
+						min = (int)dm.districts.get(i).getPopulation()-total;
+					}
+				}
+				Color[] district_colors = new Color[Settings.num_districts];
+				for( int i = 0; i < Settings.num_districts; i++) {
+					double amt = dm.districts.get(i).getPopulation()-total;
+					if( amt < 0) {
+						amt /= min;
+						int shade = (int)(255.0*amt);
+						district_colors[i] = new Color(255,255-shade,255-shade);
+					} else if (amt > 0) {
+						amt /= max;
+						int shade = (int)(255.0*amt);
+						district_colors[i] = new Color(255-shade,255,255-shade);
+					} else {
+						district_colors[i] = DEFAULT_COLOR;
+					}
+				}
+				for( int i = 0; i < features.size(); i++) {
+					Feature f = features.get(i);
+					VTD b = f.vtd;
+					Geometry geo = features.get(i).geometry;
+					int di = dm.vtd_districts[b.id];
+					geo.fillColor = district_colors[di];
+				}
+			}
+		} */
+
+/*
+		double mavg_min = 0;
+		double mavg_max = 0;
+		if( Feature.display_mode == Feature.DISPLAY_MODE_COMPACTNESS) {
+			if( shown_map < ecology.population.size()) {
+				DistrictMap dm  = ecology.population.get(shown_map);
+				dm.getReciprocalIsoPerimetricQuotient();
+
+				double max = -1000000000;
+				double min = +1000000000;
+				for( int i = 0; i < Settings.num_districts; i++) {
+					if( Math.sqrt(dm.districts.get(i).iso_quotient) > max) {
+						max = Math.sqrt(dm.districts.get(i).iso_quotient);
+					}
+					if( Math.sqrt(dm.districts.get(i).iso_quotient) < min) {
+						min = Math.sqrt(dm.districts.get(i).iso_quotient);
+					}
+				}
+				mavg_min += (min-mavg_min)/(mavg_min == 0 ? 1 : 20);
+				mavg_max += (max-mavg_max)/(mavg_max == 0 ? 1 : 20);
+				if( mavg_min < min) min = mavg_min;
+				if( mavg_max > max) max = mavg_max;
+
+				Color[] district_colors = new Color[Settings.num_districts];
+				for( int i = 0; i < Settings.num_districts; i++) {
+					double amt = 1.0-Math.abs((Math.sqrt(dm.districts.get(i).iso_quotient)-min)/(max-min));
+					amt = amt*2.0-1.0;
+					if( amt < 0) {
+						amt *= -1;
+						int shade = (int)(255.0*amt);
+						district_colors[i] = new Color(255-shade,255,255-shade);
+					} else if (amt > 0) {
+						int shade = (int)(255.0*amt);
+						district_colors[i] = new Color(255,255-shade,255-shade);
+					} else {
+						district_colors[i] = DEFAULT_COLOR;
+					}
+
+//					int shade = (int)(255.0*amt);
+//					if( shade < 0) {
+//						shade = 0;
+//					}
+//					if( shade > 255) {
+//						shade = 255;
+//					}
+//					district_colors[i] = new Color(255,255-shade,255-shade);
+				}
+				for( int i = 0; i < features.size(); i++) {
+					Feature f = features.get(i);
+					VTD b = f.vtd;
+					Geometry geo = features.get(i).geometry;
+					int di = dm.vtd_districts[b.id];
+					geo.fillColor = district_colors[di];
+				}
+			}
+		}
+		if( Feature.display_mode == Feature.DISPLAY_MODE_DIST_VOTE) {
+			if( shown_map < ecology.population.size()) {
+				DistrictMap dm  = ecology.population.get(shown_map);
+				int total = 0;
+				for( int i = 0; i < Settings.num_districts; i++) {
+					total += dm.districts.get(i).getPopulation();
+				}
+				total /= Settings.num_districts;
+
+				Color[] district_colors = new Color[Settings.num_districts];
+				//double[] district_colors = new Color[Settings.num_districts];
+				double[] tot = new double[Settings.num_districts];
+				double[] red = new double[Settings.num_districts];
+				double[] green = new double[Settings.num_districts];
+				double[] blue = new double[Settings.num_districts];
+
+				for( int i = 0; i < features.size(); i++) {
+					Feature f = features.get(i);
+					VTD b = f.vtd;
+					Geometry geo = features.get(i).geometry;
+					int di = dm.vtd_districts[b.id];
+
+					for( int k = 0; k < b.elections.size(); k++) {
+						Vector<Election> dem = b.elections.get(k);
+						for( int j = 0; j < dem.size() && j < standard_district_colors.length; j++) {
+							int pop = dem.get(j).population;
+							tot[di] += pop;
+							red[di] += standard_district_colors[j].getRed()*pop;
+							green[di] += standard_district_colors[j].getGreen()*pop;
+							blue[di] += standard_district_colors[j].getBlue()*pop;
+						}
+					}
+				}
+				for( int i = 0; i < Settings.num_districts; i++) {
+					district_colors[i] = new Color(
+							(int)(red[i] / tot[i]),
+							(int)(green[i] / tot[i]),
+							(int)(blue[i] / tot[i])
+					);
+				}
+				for( int i = 0; i < features.size(); i++) {
+					Feature f = features.get(i);
+					VTD b = f.vtd;
+					Geometry geo = features.get(i).geometry;
+					int di = dm.vtd_districts[b.id];
+					geo.fillColor = district_colors[di];
+				}
+			}
+		}
+
+		*/
