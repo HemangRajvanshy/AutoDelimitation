@@ -74,8 +74,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public double maxy;
 	
 	public String openedProjectFilePath = "";	
-	
-	
 
 	
 	//========CONTAINERS
@@ -180,7 +178,8 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
     	}
 	}
 
-	class ExportCustomThread extends Thread {
+	class ExportCustomThread extends Thread
+	{
 		File f;
 		File foutput;
 		boolean bdivide;
@@ -244,7 +243,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 			this.start();
 		}
 
-		
 
     	public void run() { 
     		try {
@@ -1369,13 +1367,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public JMenuItem mntmShowRankedDistricts = new JMenuItem("Show ranked districts");
 	public JLabel lblSeatsVotes;
 	public JSlider sliderSeatsVotes;
-	public JButton btnSubstituteColumns;
-	public JCheckBox chckbxSubstituteColumns;
 	public JMenu mnWindows = new JMenu("Windows");
-	public JButton btnElection2Columns = new JButton("Election 2 columns");
-	public JCheckBox chckbxSecondElection = new JCheckBox("Second election");
-	public JCheckBox chckbxThirdElection;
-	public JButton btnElection3Columns;
 	public JPanel panel_5;
 	public JLabel srlblSplitReduction;
 	public JSlider sliderSplitReduction;
@@ -1909,61 +1901,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
     	}
     }
-	
-	class ImportTranslations extends Thread {
-		Thread nextThread = null;
-		public void run() {
-			Hashtable<String,Feature> featmap = new Hashtable<String,Feature>();
-			String skey="GEOID";
-			String[] headers = featureCollection.getHeaders();
-			for( int i = 0; i < headers.length; i++) {
-				if( headers[i].indexOf(skey) == 0) {
-					skey = headers[i];
-					break;
-				}
-			}
-			String skey2="VTDST";
-			for( int i = 0; i < headers.length; i++) {
-				if( headers[i].indexOf(skey2) == 0) {
-					skey2 = headers[i];
-					break;
-				}
-			}
-			int ikey = 9;
-			Download.init();
-			String state_abbr = Download.state_to_abbr.get(Download.states[Download.istate]);
-			System.out.println("state_abbr: |"+state_abbr+"|");
-			for(Feature feat : featureCollection.features) {
-				featmap.put((String) feat.properties.get(skey),feat);
-			}
-			Vector<String[]> v = processVTDrenameFile();
-			System.out.println("size: "+v.size());
-			String[] header = v.remove(0);
-			int[] care = new int[]{3,6};
-			for(String[] ss : v) {
-				if( !ss[0].equals(state_abbr)) {
-					//System.out.print(".");
-					continue;
-				}
-				Feature feat = featmap.get(ss[ikey]);
-				if( feat == null) {
-					System.out.println("no match found!: "+ss[ikey]);
-					continue;
-				}
-				//System.out.println("match found!: "+ss[ikey]);
-				for( int j = 0; j < care.length; j++) {
-					int k = care[j];
-					feat.properties.put(header[k],ss[k]);
-				}
-			}
-			System.out.println("done nextThred: "+nextThread);
-			if( nextThread != null) {
-				nextThread.start();
-				nextThread = null;
-			}
-		}
-	}
-
 	
 	public void renumber() {
 		boolean[] used = new boolean[Settings.num_districts];
@@ -2812,9 +2749,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	}
 	
 	public void setElectionColumns2() {
-		if( chckbxSubstituteColumns.isSelected()) {
-			chckbxSubstituteColumns.doClick();
-		}
 		
 		for( VTD b : featureCollection.vtds) {
 			b.resetOutcomes();
@@ -2866,9 +2800,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	}
 
 	public void setElectionColumns3() {
-		if( chckbxSubstituteColumns.isSelected()) {
-			chckbxSubstituteColumns.doClick();
-		}
 		
 		for( VTD b : featureCollection.vtds) {
 			b.resetOutcomes();
@@ -2919,105 +2850,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		setEnableds();	
 	}
 
-	
-	/*public void setSubstituteColumns() {
-		int max = chckbxThirdElection.isSelected() ? 3 : chckbxSecondElection.isSelected() ? 2 : 1;
-		boolean[][] buncontested = new boolean[][]{FeatureCollection.buncontested1, FeatureCollection.buncontested2, FeatureCollection.buncontested3};
-		Vector<String>[] dems = (Vector<String>[])new Vector[]{project.election_columns, project.election_columns_2, project.election_columns_3};
-		
-		for( VTD b : featureCollection.vtds) {
-			b.resetOutcomes();
-			b.has_election_results = true;
-		}
-		for( int idem = 0; idem < max; idem++) {
-			try {
-				// TODO Auto-generated method stub
-				DistrictMap dm = featureCollection.ecology.population.get(0);
-				
-				double[] total_origs = new double[Settings.num_candidates];
-				double[] total_substs = new double[Settings.num_candidates];
-				for( int i = 0; i < Settings.num_candidates; i++) {
-					total_origs[i] = 1;
-				}
-				for( int i = 0; i < Settings.num_candidates; i++) {
-					total_substs[i] = 1;
-				}
-				
-				for( int id = 0; id < featureCollection.features.size(); id++) {
-					Feature f = featureCollection.features.get(id);
-					if( buncontested[idem][dm.vtd_districts[id]]) {
-						continue;
-					}
-					for( int i = 0; i < project.substitute_columns.size(); i++) {
-						try {
-							total_origs[i] += Double.parseDouble(f.properties.get(dems[idem].get(i)).toString().replaceAll(",",""));
-						} catch (Exception ex) {
-						}
-						try {
-							total_substs[i] += Double.parseDouble(f.properties.get(project.substitute_columns.get(i)).toString().replaceAll(",",""));
-						} catch (Exception ex) {
-						}
-					}
-				}	
-				for( int i = 0; i < Settings.num_candidates; i++) {
-					total_origs[i] /= total_substs[i];
-				}
-				
-				for( int id = 0; id < featureCollection.features.size(); id++) {
-					Feature f = featureCollection.features.get(id);
-					VTD b = f.vtd;
-					if( !buncontested[idem][dm.vtd_districts[id]]) {
-						continue;
-					}
-					
-					b.resetOutcomes();
-					double[] dd = new double[Settings.num_candidates];
-					for( int i = 0; i < project.substitute_columns.size(); i++) {
-						try {
-							dd[i] = total_origs[i]*Double.parseDouble(f.properties.get(project.substitute_columns.get(i)).toString().replaceAll(",",""));
-						} catch (Exception ex) {
-							
-							dd[i] = 0;
-							f.properties.put(project.substitute_columns.get(i),"0");
-						}
-					}
-				
-					while( b.elections.size() <= idem) {
-						b.elections.add(new Vector<Election>());
-					}
-					b.elections.get(idem).clear();
-					
-					for( int j = 0; j < Settings.num_candidates; j++) {
-						Election d = new Election();
-						//added 2015.11.18 - write back so substitutes are part of data export.
-						f.properties.put(project.election_columns.get(j),""+((int)dd[j]));
-						
-						//d.ward_id = b.id;
-						d.turnout_probability = 1;
-						d.population = (int) dd[j];
-						d.vote_prob = new double[Settings.num_candidates];
-						for( int i = 0; i < d.vote_prob.length; i++) {
-							d.vote_prob[i] = 0;
-						}
-						d.vote_prob[j] = 1;
-						if( b.elections.size() < 1) {
-							b.elections.add(new Vector<Election>());
-						}
-						b.elections.get(idem).add(d);
-						System.out.println("ward "+b.id+" added demo "+j+" "+d.population);
-					}
-				}
-			} catch (Exception ex) {
-				ex.printStackTrace();
-			}
-		}
-		
-		featureCollection.ecology.reset();
-		election_loaded = true;
-		
-		setEnableds();	
-		
-	}*/
+
 	
 	public void selectLayers() {
 		boolean is_evolving = this.evolving;
@@ -3046,87 +2879,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		
 		if( is_evolving) { featureCollection.ecology.startEvolving(); }
 	}
-	public void selectLayers2() {
-		boolean is_evolving = this.evolving;
-		if( is_evolving) { featureCollection.ecology.stopEvolving(); }
-		setDistrictColumn(project.district_column);
-		//featureCollection.loadDistrictsFromProperties(project.district_column);
-		DialogSelectLayers dlg = new DialogSelectLayers();
-		dlg.setData(featureCollection,project.election_columns_2);
-		dlg.show();
-		if( !dlg.ok) {
-			if( is_evolving) { featureCollection.ecology.startEvolving(); }
-			return;
-		}
-		
 
-		try {
-			project.election_columns_2 = dlg.in;
-			if( project.election_columns_2.size() != project.election_columns.size()) {
-				JOptionPane.showMessageDialog(mainframe, "Election columns and second election columns must match one-to-one.");
-				chckbxSecondElection.doClick();//.setSelected(false);
-				//remove from demographics
-			} else {
-				//set as demographics
-				setElectionColumns2();
-			}
-		} catch (Exception ex) {
-			System.out.println("ex "+ex);
-			ex.printStackTrace();
-		}
-		//mntmShowDemographics.setSelected(true);
-		//Feature.display_mode = 1;
-		mapPanel.invalidate();
-		mapPanel.repaint();
-		
-		if( is_evolving) { featureCollection.ecology.startEvolving(); }
-	}
-	public void setMaxElections() {
-		int imax = chckbxThirdElection.isSelected() ? 3 : chckbxSecondElection.isSelected() ? 2 : 1;
-		for( Feature f : featureCollection.features) {
-			VTD b = f.vtd;
-			while( b.elections.size() > imax) {
-				b.elections.remove(imax-1);//.add(new Vector<Demographic>());
-			}
-			b.resetOutcomes();
-		}
-	}
-	
-	public void selectLayers3() {
-		boolean is_evolving = this.evolving;
-		if( is_evolving) { featureCollection.ecology.stopEvolving(); }
-		setDistrictColumn(project.district_column);
-		//featureCollection.loadDistrictsFromProperties(project.district_column);
-		DialogSelectLayers dlg = new DialogSelectLayers();
-		dlg.setData(featureCollection,project.election_columns_3);
-		dlg.show();
-		if( !dlg.ok) {
-			if( is_evolving) { featureCollection.ecology.startEvolving(); }
-			return;
-		}
-		
-
-		try {
-			project.election_columns_3 = dlg.in;
-			if( project.election_columns_3.size() != project.election_columns.size()) {
-				JOptionPane.showMessageDialog(mainframe, "Election columns and second election columns must match one-to-one.");
-				chckbxThirdElection.doClick();//.setSelected(false);
-				//remove from demographics
-			} else {
-				//set as demographics
-				setElectionColumns3();
-			}
-		} catch (Exception ex) {
-			System.out.println("ex "+ex);
-			ex.printStackTrace();
-		}
-		//mntmShowDemographics.setSelected(true);
-		//Feature.display_mode = 1;
-		mapPanel.invalidate();
-		mapPanel.repaint();
-		
-		if( is_evolving) { featureCollection.ecology.startEvolving(); }
-	}
 	
 	public DataAndHeader readDelimited(String s, String delimiter, boolean has_headers) {
 		DataAndHeader dh = new DataAndHeader();
@@ -3639,10 +3392,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		mntmDescramble = new JMenuItem("descramble");
 		mntmShowSeats = new JMenuItem("Show seats / votes");
 		mnWindows = new JMenu("Windows");
-		btnElection2Columns = new JButton("Election 2 columns");
-		chckbxSecondElection = new JCheckBox("Second election");
-		
-		
+
 		//========CONTAINERS
 	    dlg = new JDialog(mainframe, "Working", true);
 	    dpb = new JProgressBar(0, 500);
@@ -4998,7 +4748,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		panel.add(lblPopulationColumn);
 		
 		lblDistrictColumn = new JLabel("District column");
-		lblDistrictColumn.setBounds(8, 503, 182, 16);
+		lblDistrictColumn.setBounds(8, 403, 182, 16);
 		panel.add(lblDistrictColumn);
 		
 		comboBoxDistrictColumn = new JComboBox();
@@ -5008,7 +4758,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				setDistrictColumn((String)comboBoxDistrictColumn.getSelectedItem());
 			}
 		});
-		comboBoxDistrictColumn.setBounds(8, 522, 178, 20);
+		comboBoxDistrictColumn.setBounds(8, 422, 178, 20);
 		panel.add(comboBoxDistrictColumn);
 		
 		panel_4 = new JPanel();
@@ -5080,141 +4830,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		
 		progressBar.setBounds(10, 11, 180, 14);
 		panel.add(progressBar);
-		
-		btnSubstituteColumns = new JButton("Substitute columns");
-		btnSubstituteColumns.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				boolean is_evolving = evolving;
-				if( is_evolving) { featureCollection.ecology.stopEvolving(); }
-				setDistrictColumn(project.district_column);
-				//featureCollection.loadDistrictsFromProperties(project.district_column);
-				DialogSelectLayers dlg = new DialogSelectLayers();
-				dlg.setData(featureCollection,project.substitute_columns);
-				dlg.show();
-				if( !dlg.ok) {
-					if( is_evolving) { featureCollection.ecology.startEvolving(); }
-					return;
-				}
 
-				try {
-					project.substitute_columns = dlg.in;
-				} catch (Exception ex) {
-					System.out.println("ex "+ex);
-					ex.printStackTrace();
-				}
-				if( project.substitute_columns.size() != project.election_columns.size()) {
-					JOptionPane.showMessageDialog(mainframe, "Election columns and substitute columns must match one-to-one.");
-					chckbxSubstituteColumns.doClick();//.setSelected(false);
-				}
-				//mntmShowDemographics.setSelected(true);
-				//Feature.display_mode = 1;
-				mapPanel.invalidate();
-				mapPanel.repaint();
-				
-				if( is_evolving) { featureCollection.ecology.startEvolving(); }
-			}
-
-		});
-		btnSubstituteColumns.setEnabled(false);
-		btnSubstituteColumns.setBounds(6, 469, 184, 23);
-		panel.add(btnSubstituteColumns);
-		
-		chckbxSubstituteColumns = new JCheckBox("Substitute uncontested");
-		chckbxSubstituteColumns.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				boolean b = chckbxSubstituteColumns.isSelected();
-				if( b ) {
-					JOptionPane.showMessageDialog(mainframe, "Not implemented.");
-					chckbxSubstituteColumns.setSelected(false);
-					return;
-				}
-				btnSubstituteColumns.setEnabled(b);
-				Settings.substitute_uncontested = b;
-				if( b) {
-					if( project.election_columns == null || project.election_columns.size() < 1) {
-						JOptionPane.showMessageDialog(mainframe, "Must select election columns first.");
-						chckbxSubstituteColumns.doClick();
-					} else {
-						btnSubstituteColumns.doClick();
-					}
-				}
-			}
-		});
-		chckbxSubstituteColumns.setBounds(6, 439, 178, 23);
-		panel.add(chckbxSubstituteColumns);
-		btnElection2Columns.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				selectLayers2();
-			}
-		});
-		btnElection2Columns.setEnabled(false);
-		btnElection2Columns.setBounds(7, 333, 184, 23);
-		
-		panel.add(btnElection2Columns);
-		chckbxSecondElection.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				boolean b = chckbxSecondElection.isSelected();
-				if( b) {
-					JOptionPane.showMessageDialog(mainframe, "Not implemented.");
-					chckbxSecondElection.setSelected(false);
-					return;
-				}
-				btnElection2Columns.setEnabled(b);
-				chckbxThirdElection.setEnabled(b);
-				//Settings.substitute_uncontested = b;
-				if( b) {
-					if( project.election_columns == null || project.election_columns.size() < 1) {
-						JOptionPane.showMessageDialog(mainframe, "Must select election columns first.");
-						chckbxSecondElection.doClick();
-					} else {
-						btnElection2Columns.doClick();
-					}
-				} else {
-					setMaxElections();					
-				}
-			}
-		});
-		chckbxSecondElection.setBounds(6, 301, 178, 23);
-		
-		panel.add(chckbxSecondElection);
-		
-		chckbxThirdElection = new JCheckBox("Third election");
-		chckbxThirdElection.setEnabled(false);
-		chckbxThirdElection.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				boolean b = chckbxThirdElection.isSelected();
-				if(b) {
-					JOptionPane.showMessageDialog(mainframe, "Not implemented.");
-					chckbxThirdElection.setSelected(false);
-					return;
-				}
-				btnElection3Columns.setEnabled(b);
-				//Settings.substitute_uncontested = b;
-				if( b) {
-					if( project.election_columns_2 == null || project.election_columns_2.size() < 1) {
-						JOptionPane.showMessageDialog(mainframe, "Must select second election columns first.");
-						chckbxThirdElection.doClick();
-					} else {
-						btnElection3Columns.doClick();
-					}
-				} else {
-					setMaxElections();					
-				}
-			}
-		});
-		chckbxThirdElection.setBounds(6, 373, 178, 23);
-		panel.add(chckbxThirdElection);
-		
-		btnElection3Columns = new JButton("Election 3 columns");
-		btnElection3Columns.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				selectLayers3();
-			}
-		});
-		btnElection3Columns.setEnabled(false);
-		btnElection3Columns.setBounds(7, 405, 184, 23);
-		panel.add(btnElection3Columns);
-		
 		panel_5 = new JPanel();
 		panel_5.setBounds(200, 397, 200, 252);
 		panel_5.setBorder(new LineBorder(new Color(0, 0, 0)));
@@ -5373,7 +4989,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				if( is_evolving) { featureCollection.ecology.startEvolving(); }
 			}
 		});
-		btnEthnicityColumns.setBounds(8, 553, 184, 23);
+		btnEthnicityColumns.setBounds(8, 453, 184, 23);
 		panel.add(btnEthnicityColumns);
 		textFieldTotalSeats.setEnabled(false);
 		textFieldTotalSeats.setText("1");
@@ -5534,9 +5150,9 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		frameGraph.show();
 		/*
 		frameSeatsVotesChart.move(this.getWidth(), this.getX()+frameGraph.getHeight());
-		frameSeatsVotesChart.show();
+		frameSeatsVotesChart.show();*/
 		frameStats.move(this.getWidth()+frameSeatsVotesChart.getWidth(), this.getX()+frameGraph.getHeight());
-		frameStats.show();*/
+		frameStats.show();
 	}
 
 	public boolean hush_setSeatsMode = false;
@@ -5809,59 +5425,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		}
 	}
 	
-	public static Vector processVTDrenameFile() {
-		String path = "http://www2.census.gov/geo/docs/reference/codes/files/national_vtd.txt";
-	    URL url;
-	    InputStream is = null;
-	    BufferedReader br;
-	    String line;
-        Vector<String[]> v = new Vector<String[]>();
-
-	    try {
-	        url = new URL(path);
-	        is = url.openStream();  // throws an IOException
-	        br = new BufferedReader(new InputStreamReader(is));
-	        v.add( new String[]{"STATE","STATEFP","COUNTYFP","COUNTY_NAME","VTDST","VTDNAME","CTYFP_FUL","VTDST_FUL","VTDST_HLF","GEO"});
-	        int i = 0;
-
-	        while ((line = br.readLine()) != null) {
-	        	if( i == 0) { //skip first line
-	        		i++;
-	        		continue;
-	        	}
-	        	String[] row = line.split("\\|");//[|]");
-	        	if( row.length < 6) {
-	        		continue;
-	        	}
-	            //System.out.println(line);
-	        	String[] ss = new String[]{
-	        			row[0],
-	        			row[1],
-	        			row[2],
-	        			row[3],
-	        			row[4],
-	        			row[5],
-	        			row[1]+row[2],
-	        			row[1]+row[2]+row[4],
-	        			row[2]+row[4],
-	        			row[1]+row[2]+row[4],
-	        	};
-	        	
-	        	v.add(ss);
-        		i++;
-	        }
-	    } catch (Exception mue) {
-	    	System.out.print(mue);
-	         mue.printStackTrace();
-	    }
-        try {
-            if (is != null) is.close();
-        } catch (IOException ioe) {
-            // nothing to see here
-        }
-
-	    return v;
-	}
 	public void trySetBasicColumns() {
 		String[] trys = new String[]{"POP18","VAP","VAP_TOTAL","POPULATION"};
 		for( int i = 0; i < trys.length; i++) {
