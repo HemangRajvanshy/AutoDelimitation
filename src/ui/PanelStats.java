@@ -20,10 +20,206 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
 
-public class PanelStats extends JPanel implements iDiscreteEventListener {
+public class PanelStats extends JPanel implements iDiscreteEventListener
+{
 	DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
 	Color[] dmcolors = null;
-	
+
+	public PanelStats()
+	{
+		initComponents();
+	}
+	private void initComponents()
+	{
+		this.setLayout(null);
+		this.setSize(new Dimension(449, 510));
+		this.setPreferredSize(new Dimension(838, 650));
+
+		rightRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
+
+		JScrollPane scrollPane = new JScrollPane();
+		scrollPane.setBounds(26, 384, 791, 223);
+		add(scrollPane);
+
+		districtsTable = new JTable();
+		scrollPane.setViewportView(districtsTable);
+
+		JScrollPane scrollPane_1 = new JScrollPane();
+		scrollPane_1.setBounds(427, 45, 390, 87);
+		add(scrollPane_1);
+
+		partiesTable = new JTable();
+		scrollPane_1.setViewportView(partiesTable);
+		districtsTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+
+		btnCopy = new JButton("copy");
+		btnCopy.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				ActionEvent nev = new ActionEvent(districtsTable, ActionEvent.ACTION_PERFORMED, "copy");
+				districtsTable.selectAll();
+				districtsTable.getActionMap().get(nev.getActionCommand()).actionPerformed(nev);
+			}
+		});
+		btnCopy.setBounds(728, 350, 89, 23);
+		add(btnCopy);
+
+		button = new JButton("copy");
+		button.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				ActionEvent nev = new ActionEvent(partiesTable, ActionEvent.ACTION_PERFORMED, "copy");
+				partiesTable.selectAll();
+				partiesTable.getActionMap().get(nev.getActionCommand()).actionPerformed(nev);
+			}
+		});
+		button.setBounds(728, 11, 89, 23);
+		add(button);
+
+		button_1 = new JButton("copy");
+		button_1.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				ActionEvent nev = new ActionEvent(summaryTable, ActionEvent.ACTION_PERFORMED, "copy");
+				summaryTable.selectAll();
+				summaryTable.getActionMap().get(nev.getActionCommand()).actionPerformed(nev);
+			}
+		});
+		button_1.setBounds(327, 11, 89, 23);
+		add(button_1);
+
+		scrollPane_2 = new JScrollPane();
+		scrollPane_2.setBounds(26, 45, 390, 294);
+		add(scrollPane_2);
+
+		summaryTable = new JTable();
+		scrollPane_2.setViewportView(summaryTable);
+
+		lblSummary = new JLabel("Summary");
+		lblSummary.setBounds(26, 15, 226, 14);
+		add(lblSummary);
+
+		lblByDistrict = new JLabel("By district");
+		lblByDistrict.setBounds(26, 359, 226, 14);
+		add(lblByDistrict);
+
+		lblByParty = new JLabel("By party");
+		lblByParty.setBounds(427, 20, 226, 14);
+		add(lblByParty);
+
+		lblByEthnicity = new JLabel("By ethnicity");
+		lblByEthnicity.setBounds(427, 152, 226, 14);
+		add(lblByEthnicity);
+
+		scrollPane_3 = new JScrollPane();
+		scrollPane_3.setBounds(427, 177, 390, 162);
+		add(scrollPane_3);
+
+		ethnicityTable = new JTable();
+		scrollPane_3.setViewportView(ethnicityTable);
+
+		button_2 = new JButton("copy");
+		button_2.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				ActionEvent nev = new ActionEvent(ethnicityTable, ActionEvent.ACTION_PERFORMED, "copy");
+				ethnicityTable.selectAll();
+				ethnicityTable.getActionMap().get(nev.getActionCommand()).actionPerformed(nev);
+			}
+		});
+		button_2.setBounds(728, 143, 89, 23);
+		add(button_2);
+		btnNewButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				String partiesStr = getAsHtml(partiesTable);
+				String raceStr = getAsHtml(ethnicityTable);
+				String sumStr = getAsHtml(summaryTable);
+				String districtsStr = getAsHtml(districtsTable);
+
+				URL header_path = Applet.class.getResource("/resources/header.php");
+				URL footer_path = Applet.class.getResource("/resources/footer.php");
+				URL style_sheet = Applet.class.getResource("/resources/styles2.css");
+
+				String write_folder = Download.getStartPath();
+				saveURL(write_folder+"style.css",style_sheet);
+
+
+				MapPanel.override_size = 1024;
+				saveAsPng(MainFrame.mainframe.frameSeatsVotesChart.panel,write_folder+"seats_votes.png");
+				saveAsPng(MainFrame.mainframe.frameSeatsVotesChart.panelRanked.panel,write_folder+"sorted_districts.png");
+				MapPanel.override_size = -1;
+
+				int num_maps_temp = Settings.num_maps_to_draw;
+				int display_mode_temp = Feature.display_mode;
+				Settings.num_maps_to_draw = 1;
+
+				boolean maplines = Feature.draw_lines;
+				Feature.draw_lines = true;
+				MapPanel.FSAA = Feature.draw_lines ? 4 : 1;
+
+				Feature.display_mode = Feature.DISPLAY_MODE_NORMAL;
+				saveAsPng(MainFrame.mainframe.mapPanel,write_folder+"map_districts.png");
+				Feature.display_mode = Feature.DISPLAY_MODE_DIST_VOTE;
+				saveAsPng(MainFrame.mainframe.mapPanel,write_folder+"map_district_votes.png");
+
+				Feature.draw_lines = maplines;
+				MapPanel.FSAA = Feature.draw_lines ? 4 : 1;
+				Settings.num_maps_to_draw = num_maps_temp;
+				Feature.display_mode = display_mode_temp;
+
+				MainFrame.mainframe.saveData(new File(write_folder+"vtd_data.txt"), 1,false);
+				MainFrame.mainframe.saveData(new File(write_folder+"vtd_data.dbf"), 2,false);
+
+
+				String html = "";
+				//html += "<html>\n";
+				//html += "<body>\n";
+				html += getURLtext(header_path);
+				html +="<i>This page was generated on "+ new SimpleDateFormat("yyyy.MM.dd").format(new Date())+" by <a href='http://autoredistrict.org'>Auto-Redistrict</a>.</i><br/><br/>\n";
+				html +="<h3>VTD district assignments</h3><br/>\n";
+				html +="<a href='./vtd_data.txt'>vtd_data.txt (tab-delimited)</a><br/>\n";
+				html +="<a href='./vtd_data.dbf'>vtd_data.dbf (dbase/ESRI)</a><br/>\n";
+				html +="<br/><br/>\n";
+				html +="<h3>Map</h3><br/>\n";
+				html +="<center><img src='./map_districts.png' width=800><br/><br/><img src='./map_district_votes.png' width=800></center><br/>\n";
+				html +="<h3>Seats / votes curve - Sorted districts</h3><br/>\n";
+				html +="<center><img src='./seats_votes.png'> <img src='./sorted_districts.png'></center><br/>\n";
+				html +="<h3>Summary</h3>\n";
+				html += sumStr+"\n";
+				html +="<br/><br/>\n";
+				html +="<h3>By party</h3>\n";
+				html += partiesStr+"\n";
+				html +="<br/><br/>\n";
+				html +="<h3>By district</h3>\n";
+				html += districtsStr+"\n";
+				html +="<br/><br/>\n";
+				html +="<h3>By ethnicity</h3>\n";
+				html += raceStr+"\n";
+				html += getURLtext(footer_path);
+				//html += "</body>\n";
+				//html += "</html>\n";
+				//System.out.println(html);
+
+
+				try {
+					FileOutputStream fos = new FileOutputStream(write_folder+"stats.html");
+					fos.write(html.getBytes());
+					fos.close();
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+				String url = "file:///"+(write_folder+"stats.html").replaceAll("\\\\", "/").replaceAll(" ", "%20");
+				//url = URLEncoder.encode(url);
+				System.out.println("File can be found at: " + url);
+
+
+				/*
+				excel.ExportThread thread = new excel.ExportThread();
+				thread.export(summaryTable, districtsTable, partiesTable, ethnicityTable, MainFrame.mainframe.frameSeatsVotesChart.table);
+				*/
+			}
+		});
+		btnNewButton.setBounds(89, 8, 117, 29);
+
+		add(btnNewButton);
+	}
+
 	public void saveAsPng(JComponent component, String path) {
 		saveAsPng( component, path,component.getWidth(), component.getHeight());
   	}
@@ -76,15 +272,16 @@ public class PanelStats extends JPanel implements iDiscreteEventListener {
 		
 	}
 	
-	public void getStats() {
-		try {
+	public void getStats()
+	{
 		Vector<Double> ranked_dists = new Vector<Double>();
 
-		try {
-		if( featureCollection == null || featureCollection.ecology == null || featureCollection.ecology.population.size() < 1) {
+		if( featureCollection == null || featureCollection.ecology == null || featureCollection.ecology.population.size() < 1)
+		{
 			System.out.println("no ecology attached "+featureCollection);
 			return;
 		}
+
 		DistrictMap dm = featureCollection.ecology.population.get(0);
 		dm.calcFairnessScores(); 
 		boolean single =  featureCollection.ecology.population.size() < 3;
@@ -97,8 +294,8 @@ public class PanelStats extends JPanel implements iDiscreteEventListener {
 		DecimalFormat integer = new DecimalFormat("###,###,###,###,##0");
 		//        fairnessScores = new double[]{length,disproportional_representation,population_imbalance,disconnected_pops,power_fairness}; //exponentiate because each bit represents twice as many people disenfranched
 
-		try {
-		if( false) {
+		if( false)
+		{
 			Ecology.history.add(new double[]{
 					featureCollection.ecology.generation,
 					featureCollection.ecology.population.size(),
@@ -167,11 +364,7 @@ public class PanelStats extends JPanel implements iDiscreteEventListener {
 			});
 			
 		}
-		
-		} catch (Exception ex) {
-			System.out.println("ex ad "+ex);
-			ex.printStackTrace();
-		}
+
 		
 		Vector<String> cands = MainFrame.mainframe.project.election_columns;
 		String[] dem_col_names = MainFrame.mainframe.project.demographic_columns_as_array();
@@ -488,212 +681,13 @@ public class PanelStats extends JPanel implements iDiscreteEventListener {
 		
 		this.invalidate();
 		this.repaint();
-		} catch (Exception ex) {
-			System.out.println("ex af "+ex);
-			ex.printStackTrace();
-		}
+
 		if( featureCollection.ecology != null && featureCollection.ecology.population != null && featureCollection.ecology.population.size() > 0) {
 			MainFrame.mainframe.frameSeatsVotesChart.setData(featureCollection.ecology.population.get(0));
 			MainFrame.mainframe.frameSeatsVotesChart.panelRanked.setData(ranked_dists);
 		}
-		} catch (Exception ex) {
-			System.out.println("ex in PanelStats.getStats: "+ex);
-			ex.printStackTrace();
-		}
 	}
-	public PanelStats() {
 
-		initComponents();
-	}
-	private void initComponents() {
-		this.setLayout(null);
-		this.setSize(new Dimension(449, 510));
-		this.setPreferredSize(new Dimension(838, 650));
-		
-		rightRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
-		
-		JScrollPane scrollPane = new JScrollPane();
-		scrollPane.setBounds(26, 384, 791, 223);
-		add(scrollPane);
-		
-		districtsTable = new JTable();
-		scrollPane.setViewportView(districtsTable);
-		
-		JScrollPane scrollPane_1 = new JScrollPane();
-		scrollPane_1.setBounds(427, 45, 390, 87);
-		add(scrollPane_1);
-		
-		partiesTable = new JTable();
-		scrollPane_1.setViewportView(partiesTable);
-		districtsTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-		
-		btnCopy = new JButton("copy");
-		btnCopy.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				ActionEvent nev = new ActionEvent(districtsTable, ActionEvent.ACTION_PERFORMED, "copy");
-				districtsTable.selectAll();
-				districtsTable.getActionMap().get(nev.getActionCommand()).actionPerformed(nev);
-			}
-		});
-		btnCopy.setBounds(728, 350, 89, 23);
-		add(btnCopy);
-		
-		button = new JButton("copy");
-		button.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				ActionEvent nev = new ActionEvent(partiesTable, ActionEvent.ACTION_PERFORMED, "copy");
-				partiesTable.selectAll();
-				partiesTable.getActionMap().get(nev.getActionCommand()).actionPerformed(nev);
-			}
-		});
-		button.setBounds(728, 11, 89, 23);
-		add(button);
-		
-		button_1 = new JButton("copy");
-		button_1.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				ActionEvent nev = new ActionEvent(summaryTable, ActionEvent.ACTION_PERFORMED, "copy");
-				summaryTable.selectAll();
-				summaryTable.getActionMap().get(nev.getActionCommand()).actionPerformed(nev);
-			}
-		});
-		button_1.setBounds(327, 11, 89, 23);
-		add(button_1);
-		
-		scrollPane_2 = new JScrollPane();
-		scrollPane_2.setBounds(26, 45, 390, 294);
-		add(scrollPane_2);
-		
-		summaryTable = new JTable();
-		scrollPane_2.setViewportView(summaryTable);
-		
-		lblSummary = new JLabel("Summary");
-		lblSummary.setBounds(26, 15, 226, 14);
-		add(lblSummary);
-		
-		lblByDistrict = new JLabel("By district");
-		lblByDistrict.setBounds(26, 359, 226, 14);
-		add(lblByDistrict);
-		
-		lblByParty = new JLabel("By party");
-		lblByParty.setBounds(427, 20, 226, 14);
-		add(lblByParty);
-		
-		lblByEthnicity = new JLabel("By ethnicity");
-		lblByEthnicity.setBounds(427, 152, 226, 14);
-		add(lblByEthnicity);
-		
-		scrollPane_3 = new JScrollPane();
-		scrollPane_3.setBounds(427, 177, 390, 162);
-		add(scrollPane_3);
-		
-		ethnicityTable = new JTable();
-		scrollPane_3.setViewportView(ethnicityTable);
-		
-		button_2 = new JButton("copy");
-		button_2.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				ActionEvent nev = new ActionEvent(ethnicityTable, ActionEvent.ACTION_PERFORMED, "copy");
-				ethnicityTable.selectAll();
-				ethnicityTable.getActionMap().get(nev.getActionCommand()).actionPerformed(nev);
-			}
-		});
-		button_2.setBounds(728, 143, 89, 23);
-		add(button_2);
-		btnNewButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				String partiesStr = getAsHtml(partiesTable);
-				String raceStr = getAsHtml(ethnicityTable);
-				String sumStr = getAsHtml(summaryTable);
-				String districtsStr = getAsHtml(districtsTable);
-				
-				URL header_path = Applet.class.getResource("/resources/header.php");
-				URL footer_path = Applet.class.getResource("/resources/footer.php");
-				URL style_sheet = Applet.class.getResource("/resources/styles2.css");
-				
-				String write_folder = Download.getStartPath();
-				saveURL(write_folder+"style.css",style_sheet);
-				
-
-				MapPanel.override_size = 1024;
-				saveAsPng(MainFrame.mainframe.frameSeatsVotesChart.panel,write_folder+"seats_votes.png");
-				saveAsPng(MainFrame.mainframe.frameSeatsVotesChart.panelRanked.panel,write_folder+"sorted_districts.png");
-				MapPanel.override_size = -1;
-				
-				int num_maps_temp = Settings.num_maps_to_draw;
-				int display_mode_temp = Feature.display_mode;
-				Settings.num_maps_to_draw = 1;
-				
-				boolean maplines = Feature.draw_lines;
-				Feature.draw_lines = true;
-				MapPanel.FSAA = Feature.draw_lines ? 4 : 1;
-				
-				Feature.display_mode = Feature.DISPLAY_MODE_NORMAL;				
-				saveAsPng(MainFrame.mainframe.mapPanel,write_folder+"map_districts.png");
-				Feature.display_mode = Feature.DISPLAY_MODE_DIST_VOTE;			
-				saveAsPng(MainFrame.mainframe.mapPanel,write_folder+"map_district_votes.png");
-
-				Feature.draw_lines = maplines;
-				MapPanel.FSAA = Feature.draw_lines ? 4 : 1;
-				Settings.num_maps_to_draw = num_maps_temp;
-				Feature.display_mode = display_mode_temp;
-				
-				MainFrame.mainframe.saveData(new File(write_folder+"vtd_data.txt"), 1,false);
-				MainFrame.mainframe.saveData(new File(write_folder+"vtd_data.dbf"), 2,false);
-				
-				
-				String html = "";
-				//html += "<html>\n";
-				//html += "<body>\n";
-				html += getURLtext(header_path);
-				html +="<i>This page was generated on "+ new SimpleDateFormat("yyyy.MM.dd").format(new Date())+" by <a href='http://autoredistrict.org'>Auto-Redistrict</a>.</i><br/><br/>\n";
-				html +="<h3>VTD district assignments</h3><br/>\n";
-				html +="<a href='./vtd_data.txt'>vtd_data.txt (tab-delimited)</a><br/>\n";
-				html +="<a href='./vtd_data.dbf'>vtd_data.dbf (dbase/ESRI)</a><br/>\n";
-				html +="<br/><br/>\n";
-				html +="<h3>Map</h3><br/>\n";
-				html +="<center><img src='./map_districts.png' width=800><br/><br/><img src='./map_district_votes.png' width=800></center><br/>\n";
-				html +="<h3>Seats / votes curve - Sorted districts</h3><br/>\n";
-				html +="<center><img src='./seats_votes.png'> <img src='./sorted_districts.png'></center><br/>\n";
-				html +="<h3>Summary</h3>\n";
-				html += sumStr+"\n";
-				html +="<br/><br/>\n";
-				html +="<h3>By party</h3>\n";
-				html += partiesStr+"\n";
-				html +="<br/><br/>\n";
-				html +="<h3>By district</h3>\n";
-				html += districtsStr+"\n";
-				html +="<br/><br/>\n";
-				html +="<h3>By ethnicity</h3>\n";
-				html += raceStr+"\n";
-				html += getURLtext(footer_path);
-				//html += "</body>\n";
-				//html += "</html>\n";
-				//System.out.println(html);
-				
-
-				try {
-					FileOutputStream fos = new FileOutputStream(write_folder+"stats.html");
-					fos.write(html.getBytes());
-					fos.close();
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-				String url = "file:///"+(write_folder+"stats.html").replaceAll("\\\\", "/").replaceAll(" ", "%20");
-				//url = URLEncoder.encode(url);
-				System.out.println("File can be found at: " + url);
-				
-
-				/*
-				excel.ExportThread thread = new excel.ExportThread();
-				thread.export(summaryTable, districtsTable, partiesTable, ethnicityTable, MainFrame.mainframe.frameSeatsVotesChart.table);
-				*/
-			}
-		});
-		btnNewButton.setBounds(89, 8, 117, 29);
-		
-		add(btnNewButton);
-	}
 	public FeatureCollection featureCollection;
 	private JTable districtsTable;
 	private JTable partiesTable;

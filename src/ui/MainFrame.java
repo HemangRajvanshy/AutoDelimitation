@@ -2528,8 +2528,6 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 		mntmRenumber.setEnabled(geo_loaded);
 		mntmSaveProjectFile.setEnabled(geo_loaded);
 		mntmCopyColumn.setEnabled(geo_loaded);
-
-		
 	}
 	
 	public void resetZoom() {
@@ -2854,30 +2852,26 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	
 	public void selectLayers() {
 		boolean is_evolving = this.evolving;
-		if( is_evolving) { featureCollection.ecology.stopEvolving(); }
+		if(is_evolving) { featureCollection.ecology.stopEvolving(); }
 		setDistrictColumn(project.district_column);
 		//featureCollection.loadDistrictsFromProperties(project.district_column);
 		DialogSelectLayers dlg = new DialogSelectLayers();
 		dlg.setData(featureCollection,project.election_columns);
 		dlg.show();
 		if( !dlg.ok) {
-			if( is_evolving) { featureCollection.ecology.startEvolving(); }
+			if(is_evolving) { featureCollection.ecology.startEvolving(); }
 			return;
 		}
 
-		try {
-			project.election_columns = dlg.in;
-			setElectionColumns();
-		} catch (Exception ex) {
-			System.out.println("ex "+ex);
-			ex.printStackTrace();
-		}
+		project.election_columns = dlg.in;
+		setElectionColumns();
+
 		//mntmShowDemographics.setSelected(true);
 		//Feature.display_mode = 1;
 		mapPanel.invalidate();
 		mapPanel.repaint();
 		
-		if( is_evolving) { featureCollection.ecology.startEvolving(); }
+		if(is_evolving) { featureCollection.ecology.startEvolving(); }
 	}
 
 	

@@ -348,20 +348,15 @@ public class Ecology extends ReflectionJSONObject<Ecology> {
         last_num_districts = Settings.num_districts;
     }
     
-    class ScoringThread implements Runnable {
+    class ScoringThread implements Runnable
+	{
     	Vector<DistrictMap> population = new Vector<DistrictMap>();
     	public void run() {
-            for( DistrictMap map : population) {
-            	//System.out.print(".");
-            	try {
-            		map.calcFairnessScores();
-            	} catch (Exception ex) { 
-            		
-            	}
+            for( DistrictMap map : population)
+            {
+				map.calcFairnessScores();
             }
-            //System.out.print(".");
     		scoringLatch.countDown();
-    		
     	}
     }
     int step = 0;
