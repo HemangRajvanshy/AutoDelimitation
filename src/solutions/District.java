@@ -13,9 +13,7 @@ public class District extends JSONObject {
     
     double[][] outcomes;
     double[][] pop_balanced_outcomes;
-    
-    public static boolean use_simulated_elections = false;
-    
+
     private double population = -1;
     
     public double area = -1;
@@ -134,7 +132,7 @@ public class District extends JSONObject {
         double[] residual_popular_vote = new double[Settings.num_candidates];
         double[] residual_popular_vote2 = new double[Settings.num_candidates];
         if( outcomes == null) {
-        	this.generateOutcomes(Settings.num_elections_simulated);
+        	this.generateOutcomes(1);
         }
         int result = (int)Math.floor(Math.random()*(double)outcomes.length);
         double total_pop = 0;
@@ -391,7 +389,7 @@ public class District extends JSONObject {
         return new double[][]{district_vote,pop_district_vote};
     	} catch (Exception ex) {
     		ex.printStackTrace();
-    		this.generateOutcomes(Settings.num_elections_simulated);
+    		this.generateOutcomes(1);
     		return getAnOutcomePair();
     	}
     }

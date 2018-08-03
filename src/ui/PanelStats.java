@@ -294,77 +294,48 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 		DecimalFormat integer = new DecimalFormat("###,###,###,###,##0");
 		//        fairnessScores = new double[]{length,disproportional_representation,population_imbalance,disconnected_pops,power_fairness}; //exponentiate because each bit represents twice as many people disenfranched
 
-		if( false)
+		if(false)
 		{
-			Ecology.history.add(new double[]{
-					featureCollection.ecology.generation,
-					featureCollection.ecology.population.size(),
-					Settings.num_districts,
-					
-					Settings.mutation_boundary_rate,
-					
-					(dm.fairnessScores[1]+dm2.fairnessScores[1]+dm3.fairnessScores[1])*0.3333333*conversion_to_bits, //REP IMBALANCE
-					(dm.fairnessScores[4]+dm2.fairnessScores[4]+dm3.fairnessScores[4])*0.3333333, //POWER IMBALANCE
-					(dm.fairnessScores[5]+dm2.fairnessScores[5]+dm3.fairnessScores[5])*0.3333333, //WASTED VOTES TOTAL
-					(dm.fairnessScores[6]+dm2.fairnessScores[6]+dm3.fairnessScores[6])*0.3333333, //WASTED VOTES IMBALANCE
-					0,
-					
+			System.out.println("Size: " + featureCollection.ecology.population.size());
+			Ecology.history.add
+					(new double[]
+							{
+									featureCollection.ecology.generation,
+									featureCollection.ecology.population.size(),
+									Settings.num_districts,
 
-					0,//Settings.getAnnealingFloor( featureCollection.ecology.generation),
+									Settings.mutation_boundary_rate,
 
-					(
-							//Settings.square_root_compactness 
-							(dm.fairnessScores[0]+dm2.fairnessScores[0]+dm3.fairnessScores[0])*0.3333333 
-							//: (Math.sqrt(dm.fairnessScores[0])+Math.sqrt(dm2.fairnessScores[0])+Math.sqrt(dm3.fairnessScores[0]))*0.3333333
-						), //BORDER LENGTH
-					(dm.fairnessScores[3]+dm2.fairnessScores[3]+dm3.fairnessScores[3])*0.3333333, //DISCONNECTED POP
-					(dm.fairnessScores[2]+dm2.fairnessScores[2]+dm3.fairnessScores[2])*0.3333333*conversion_to_bits, //POP IMBALANCE
-					0,
-					0,
-					
-			});
-			
-		} else {
-			Ecology.history.add(new double[]{
-					featureCollection.ecology.generation,
-					featureCollection.ecology.population.size(),
-					Settings.num_districts,
-					
-					Settings.mutation_boundary_rate,
-					
-					dm.fairnessScores[8], //diag error
-					dm.fairnessScores[5], //WASTED VOTES TOTAL
-					//dm.fairnessScores[1]*conversion_to_bits, //REP IMBALANCE
-					//dm.fairnessScores[6], //WASTED VOTES IMBALANCE
-					dm.fairnessScores[7], //seats / votes asymmetry
-					dm.fairnessScores[10],
-					dm.fairnessScores[4], //POWER IMBALANCE
-					/*
-					 *    		"Proportionalness (global)",
-    		"Competitiveness (victory margin)",
-    		"Partisan symmetry",
-    		"Racial vote dilution",
-    		"Voting power imbalance",
+									dm.fairnessScores[8], //diag error
+									dm.fairnessScores[5], //WASTED VOTES TOTAL
+									//dm.fairnessScores[1]*conversion_to_bits, //REP IMBALANCE
+									//dm.fairnessScores[6], //WASTED VOTES IMBALANCE
+									dm.fairnessScores[7], //seats / votes asymmetry
+									dm.fairnessScores[10],
+									dm.fairnessScores[4], //POWER IMBALANCE
+									/*
+                                     *    		"Proportionalness (global)",
+                            "Competitiveness (victory margin)",
+                            "Partisan symmetry",
+                            "Racial vote dilution",
+                            "Voting power imbalance",
 
-					 */
-					
+                                     */
 
-					Settings.getAnnealingFloor( featureCollection.ecology.generation),
 
-					(
-							//Settings.square_root_compactness 
-							dm.fairnessScores[0]
-							//: (Math.sqrt(dm.fairnessScores[0])+Math.sqrt(dm2.fairnessScores[0])+Math.sqrt(dm3.fairnessScores[0]))*0.3333333
-						), //BORDER LENGTH
-					dm.fairnessScores[3], //DISCONNECTED POP
-					dm.fairnessScores[2], //POP IMBALANCE
-					dm.fairnessScores[9],//dm.fairnessScores[8], //diag error
-					0,
-					
-			});
-			
+									Settings.getAnnealingFloor(featureCollection.ecology.generation),
+
+									(
+											//Settings.square_root_compactness
+											dm.fairnessScores[0]
+											//: (Math.sqrt(dm.fairnessScores[0])+Math.sqrt(dm2.fairnessScores[0])+Math.sqrt(dm3.fairnessScores[0]))*0.3333333
+									), //BORDER LENGTH
+									dm.fairnessScores[3], //DISCONNECTED POP
+									dm.fairnessScores[2], //POP IMBALANCE
+									dm.fairnessScores[9],//dm.fairnessScores[8], //diag error
+									0,
+							});
 		}
-
 		
 		Vector<String> cands = MainFrame.mainframe.project.election_columns;
 		String[] dem_col_names = MainFrame.mainframe.project.demographic_columns_as_array();
@@ -445,10 +416,8 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 				}
 			}
 	
-			for( int i = 0; i < dm.districts.size(); i++) {
-				try {
-					dm.calcDemographicStatistics();
-				dmcolors[i] = dm.getWastedVoteColor(i);
+			for( int i = 0; i < dm.districts.size(); i++)
+			{
 				ddata[i] = new String[dcolumns.length];
 				District d = dm.districts.get(i);
 				total_population += d.getPopulation();
@@ -530,10 +499,7 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 				ddata[i][1] = integer.format(d.getPopulation());
 				ddata[i][2] = ""+winner;
 				ddata[i][3] = ""+pviw;
-				
-				ddata[i][4] = ""+dm.vote_gap_by_district[i];
-				ddata[i][5] = ""+dm.wasted_votes_by_district[i];
-				
+
 				ddata[i][6] = ""+integer.format(d.getPopulation()/Settings.seats_in_district(i));//  decimal.format(self_entropy*conversion_to_bits)+" bits";
 				ddata[i][7] = ""+d.iso_quotient;
 				ddata[i][8] = ""+d.area;
@@ -551,14 +517,9 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 				for( int j = 0; j < dem_col_names.length; j++) {
 					ddata[i][j+11+Settings.num_candidates*2] = ""+decimal.format(demo_pct[i][j]);
 					votes_by_dem[j] += total_votes*demo_pct[i][j];
-					vote_margins_by_dem[j] += dm.vote_gap_by_district[i]*demo_pct[i][j];
-				}	
+				}
 				for( int j = 0; j < dem_col_names.length; j++) {
 					ddata[i][j+11+Settings.num_candidates*2+dem_col_names.length] = ""+integer.format(demo[i][j]);
-				}	
-				} catch (Exception ex) {
-					System.out.println("ex stats 1 "+ex);
-					ex.printStackTrace();
 				}
 			}
 			} catch (Exception ex) {
@@ -610,10 +571,6 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 
 			
 			//=== summary
-			int wasted_votes = 0;
-			for( int m : dm.wasted_votes_by_party) {
-				wasted_votes += m;
-			}
 			double egap = 100.0*Math.abs(wasted_0-wasted_1)/grand_total_votes;
 
 			String[] scolumns = new String[]{"Value","Measure"};
@@ -626,9 +583,9 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 					Settings.reduce_splits && dm.countMuniSplitsInteger() > 0 ? new String[]{""+integer.format(dm.countMuniSplitsInteger()),"Muni splits"} : new String[]{"",""},	
 					new String[]{"",""},					
 					new String[]{""+decimal.format(dm.fairnessScores[7]),"Seats / vote asymmetry"},
-					new String[]{""+integer.format(dm.total_vote_gap),"Competitiveness (victory margin)"},
+					//new String[]{""+integer.format(dm.total_vote_gap),"Competitiveness (victory margin)"},
 					new String[]{""+decimal.format(dm.fairnessScores[8]),"Representation imbalance (global)"},
-					new String[]{""+decimal.format(dm.getRacialVoteDilution()),"Racial vote dilution"},
+					//new String[]{""+decimal.format(dm.getRacialVoteDilution()),"Racial vote dilution"},
 					new String[]{"",""},
 					//new String[]{""+integer.format(wasted_votes),"Wasted votes (count)"},
 					//new String[]{""+decimal.format(dm.fairnessScores[1]*conversion_to_bits),"Representation imbalance (local)"},
@@ -657,7 +614,7 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 						""+cands.get(i),
 						""+integer.format(elec_counts[i]),
 						""+integer.format(vote_counts[i]),//*total_population/tot_votes),
-						""+(dm.wasted_votes_by_party[i]),
+						//""+(dm.wasted_votes_by_party[i]),
 						""+(elec_counts[i]/((double)tot_seats)),
 						""+(vote_counts[i]/tot_votes)
 				};

@@ -2589,7 +2589,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				}
 			}
 
-			/*if( featureCollection.ecology != null && featureCollection.ecology.population != null && featureCollection.ecology.population.size() > 0)
+			if( featureCollection.ecology != null && featureCollection.ecology.population != null && featureCollection.ecology.population.size() > 0)
 			{
 				while( featureCollection.ecology.population.size() > 1) {
 					featureCollection.ecology.population.remove(1);
@@ -2599,42 +2599,33 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 				panelStats.getStats();
 				featureCollection.findUncontested();
 				panelStats.getStats();
-				if( featureCollection.vuncontested1.size() > 0 || featureCollection.vuncontested2.size() > 0) {
+				if( featureCollection.vuncontested1.size() > 0 || featureCollection.vuncontested2.size() > 0)
+				{
 					System.out.println("uncontested found!");
-					if(project.substitute_columns.size() > 0 && Settings.substitute_uncontested) {
-						try {
-							System.out.println("setting substitutes");
-							setSubstituteColumns();
-						} catch (Exception ex) {
-							ex.printStackTrace();
-						}
-						Settings.ignore_uncontested = false;
-						panelStats.getStats();
-						project.district_column = "";
-						setDistrictColumn(district);
-					} else {
-						int opt = JOptionPane.showConfirmDialog(this, "Uncontested elections detected.  Lock and ignore uncontested districts?", "Uncontested elections detected!", JOptionPane.YES_NO_OPTION);
-						if( opt == JOptionPane.YES_OPTION) {
-							Settings.ignore_uncontested = true;
-							for( Integer d : FeatureCollection.vuncontested1) {
-								//District.uncontested[d-1] = true;
-								String key = district+","+d;
-								if( !manageLocks.locks.contains(key)) {
-									manageLocks.locks.add(key);
-								}
+
+					int opt = JOptionPane.showConfirmDialog(this, "Uncontested elections detected.  Lock and ignore uncontested districts?", "Uncontested elections detected!", JOptionPane.YES_NO_OPTION);
+					if( opt == JOptionPane.YES_OPTION) {
+						Settings.ignore_uncontested = true;
+						for( Integer d : FeatureCollection.vuncontested1) {
+							//District.uncontested[d-1] = true;
+							String key = district+","+d;
+							if( !manageLocks.locks.contains(key)) {
+								manageLocks.locks.add(key);
 							}
-							panelStats.getStats();
-							manageLocks.list.setListData(manageLocks.locks);
-							manageLocks.resetLocks();
-							manageLocks.show();
+						}
+						panelStats.getStats();
+						manageLocks.list.setListData(manageLocks.locks);
+						manageLocks.resetLocks();
+						manageLocks.show();
 						} else {
 							Settings.ignore_uncontested = false;
 						}
 					}
-				} else {
+				}
+				else {
 					Settings.ignore_uncontested = false;
 				}
-			} */
+
 
 			mapPanel.invalidate();
 			mapPanel.repaint();

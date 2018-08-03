@@ -212,7 +212,7 @@ public class Ecology extends ReflectionJSONObject<Ecology> {
 		}
 		resize_population();
 		for(District d : population.get(0).districts) {
-			d.generateOutcomes(Settings.num_elections_simulated);
+			d.generateOutcomes(1);
 		}
 		evolve_paused = false;
 		evolveThread = new EvolveThread();

@@ -189,7 +189,7 @@ public class Project extends ReflectionJSONObject<Project> {
 		initial_population = Settings.population;
 		number_of_districts = Settings.num_districts;
 		//members_per_district = Settings.seats_in_district;
-		simulated_elections = Settings.num_elections_simulated;
+		simulated_elections = 1;
 		
 		equalize_turnout = Settings.adjust_vote_to_population;
 		

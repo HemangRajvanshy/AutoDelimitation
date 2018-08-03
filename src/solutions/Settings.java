@@ -199,7 +199,6 @@ public class Settings extends serialization.ReflectionJSONObject<Settings> {
 	public static double mutation_rate = 0.5;
 	public static double mutation_boundary_rate = 0.5;
 	public static int population = 100;
-	public static int num_elections_simulated = 1;
 	public static int num_districts = 4;
 	// geometry
 	// demographics
@@ -210,7 +209,6 @@ public class Settings extends serialization.ReflectionJSONObject<Settings> {
 	public static double elite_fraction = 0.25;
 	public static double unpaired_edge_length_weight = 0.5;
 	public static boolean ignore_uncontested = false;
-	public static boolean substitute_uncontested = false;
 	public static boolean reduce_splits;
 
 	public static void setPopulation(double i) {
