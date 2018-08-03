@@ -35,7 +35,7 @@ public class Ecology extends ReflectionJSONObject<Ecology> {
 
 	static int num_threads = 8;
 
-	public static double[] fairnessScoreEmaVars = new double[11];
+	public static double[] fairnessScoreEmaVars = new double[9];
 	public static double[] fairnessScoreEmaMeans = new double[11];
 
     int cutoff;
@@ -44,7 +44,7 @@ public class Ecology extends ReflectionJSONObject<Ecology> {
 	static public boolean evolve_paused = true;
 	public static double invert = 1;
 	int last_population = 0;
-	int last_num_districts = 0;
+	int last_num_districts = 4;
 	
 	public HashMap<Integer,VTD> wards_by_id;
 	
@@ -360,7 +360,8 @@ public class Ecology extends ReflectionJSONObject<Ecology> {
     	}
     }
     int step = 0;
-    public void evolveWithSpeciation() {
+    public void evolveWithSpeciation()
+	{
 		cutoff = (int)(Settings.elite_fraction*(double)population.size());
     	speciation_cutoff = cutoff;
 

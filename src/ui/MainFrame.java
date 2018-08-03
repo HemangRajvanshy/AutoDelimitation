@@ -2591,13 +2591,13 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 
 			if( featureCollection.ecology != null && featureCollection.ecology.population != null && featureCollection.ecology.population.size() > 0)
 			{
-				while( featureCollection.ecology.population.size() > 1) {
-					featureCollection.ecology.population.remove(1);
-				}
-				Settings.ignore_uncontested = false;
+//				while( featureCollection.ecology.population.size() > 1) {
+//					featureCollection.ecology.population.remove(1);
+//				}
+				Settings.ignore_uncontested = true;
 				featureCollection.ecology.population.get(0).calcFairnessScores();
 				panelStats.getStats();
-				featureCollection.findUncontested();
+				//featureCollection.findUncontested();
 				panelStats.getStats();
 				if( featureCollection.vuncontested1.size() > 0 || featureCollection.vuncontested2.size() > 0)
 				{
