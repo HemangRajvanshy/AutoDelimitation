@@ -12,7 +12,7 @@ import java.util.Vector;
 
 public class PanelGraphDrawArea extends JPanel {
 	public double pctToHide = 0.0;
-	public boolean use_normalized = false;
+	public boolean use_normalized = true;
 	
     public String[] ss = new String[]{
     		"Generation",
