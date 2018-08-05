@@ -48,8 +48,6 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 		scrollPane_1.setBounds(427, 45, 390, 87);
 		add(scrollPane_1);
 
-		partiesTable = new JTable();
-		scrollPane_1.setViewportView(partiesTable);
 		districtsTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 
 		btnCopy = new JButton("copy");
@@ -63,16 +61,6 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 		btnCopy.setBounds(728, 350, 89, 23);
 		add(btnCopy);
 
-		button = new JButton("copy");
-		button.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				ActionEvent nev = new ActionEvent(partiesTable, ActionEvent.ACTION_PERFORMED, "copy");
-				partiesTable.selectAll();
-				partiesTable.getActionMap().get(nev.getActionCommand()).actionPerformed(nev);
-			}
-		});
-		button.setBounds(728, 11, 89, 23);
-		add(button);
 
 		button_1 = new JButton("copy");
 		button_1.addActionListener(new ActionListener() {
@@ -100,10 +88,6 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 		lblByDistrict.setBounds(26, 359, 226, 14);
 		add(lblByDistrict);
 
-		lblByParty = new JLabel("By party");
-		lblByParty.setBounds(427, 20, 226, 14);
-		add(lblByParty);
-
 		lblByEthnicity = new JLabel("By ethnicity");
 		lblByEthnicity.setBounds(427, 152, 226, 14);
 		add(lblByEthnicity);
@@ -127,7 +111,6 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 		add(button_2);
 		btnNewButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				String partiesStr = getAsHtml(partiesTable);
 				String raceStr = getAsHtml(ethnicityTable);
 				String sumStr = getAsHtml(summaryTable);
 				String districtsStr = getAsHtml(districtsTable);
@@ -182,9 +165,6 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 				html +="<center><img src='./seats_votes.png'> <img src='./sorted_districts.png'></center><br/>\n";
 				html +="<h3>Summary</h3>\n";
 				html += sumStr+"\n";
-				html +="<br/><br/>\n";
-				html +="<h3>By party</h3>\n";
-				html += partiesStr+"\n";
 				html +="<br/><br/>\n";
 				html +="<h3>By district</h3>\n";
 				html += districtsStr+"\n";
@@ -356,8 +336,6 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 			
 			String[] dcolumns = new String[11+Settings.num_candidates*2+dem_col_names.length*2];
 			String[][] ddata = new String[dm.districts.size()][];
-			String[] ccolumns = new String[]{"Party","Delegates","Pop. vote","Wasted votes","% del","% pop vote"};
-			String[][] cdata = new String[Settings.num_candidates][];
 			double[] elec_counts = new double[Settings.num_candidates];
 			double[] vote_counts = new double[Settings.num_candidates];
 			double tot_votes = 0;
@@ -607,19 +585,7 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 
 
 			double tot_seats = Settings.total_seats();
-			//=== by party
-			for( int i = 0; i < Settings.num_candidates; i++) {
-				try {
-				cdata[i] = new String[]{
-						""+cands.get(i),
-						""+integer.format(elec_counts[i]),
-						""+integer.format(vote_counts[i]),//*total_population/tot_votes),
-						//""+(dm.wasted_votes_by_party[i]),
-						""+(elec_counts[i]/((double)tot_seats)),
-						""+(vote_counts[i]/tot_votes)
-				};
-				} catch (Exception ex) { }
-			}
+
 
 			
 			TableModel tm1 = new DefaultTableModel(ddata,dcolumns);
@@ -628,9 +594,7 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 	        while (en.hasMoreElements()) {
 	            TableColumn tc = en.nextElement();
 	            tc.setCellRenderer(new MyTableCellRenderer());
-	        }			
-			TableModel tm2 = new DefaultTableModel(cdata,ccolumns);
-			partiesTable.setModel(tm2);
+	        }
 		} catch (Exception ex) {
 			System.out.println("ex ad "+ex);
 			ex.printStackTrace();
@@ -647,15 +611,12 @@ public class PanelStats extends JPanel implements iDiscreteEventListener
 
 	public FeatureCollection featureCollection;
 	private JTable districtsTable;
-	private JTable partiesTable;
 	public JButton btnCopy;
-	public JButton button;
 	public JTable summaryTable;
 	public JButton button_1;
 	public JScrollPane scrollPane_2;
 	public JLabel lblSummary;
 	public JLabel lblByDistrict;
-	public JLabel lblByParty;
 	public JLabel lblByEthnicity;
 	public JScrollPane scrollPane_3;
 	public JButton button_2;

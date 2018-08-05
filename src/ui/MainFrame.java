@@ -3345,7 +3345,7 @@ public class MainFrame extends JFrame implements iChangeListener, iDiscreteEvent
 	public void jbInit() {
 
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setTitle("Automatic Redistricter");
+		setTitle("Auto Delimitation");
 		Dimension d = new Dimension(800,1024);
 		//this.setPreferredSize(d);
 		this.setSize(new Dimension(1021, 779));
